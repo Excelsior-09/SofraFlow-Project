@@ -1,0 +1,21 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /features
+Allow: /pricing
+Allow: /about
+Allow: /contact
+Allow: /solutions
+Allow: /solutions/*
+Allow: /blog
+Allow: /blog/*
+Allow: /m/*
+
+# Disallow private application dashboard and customer sensitive order screens
+Disallow: /app/
+Disallow: /order/
+Disallow: /login
+Disallow: /signup
+
+# Host & Sitemap location
+Sitemap: https://sofraflow.com/sitemap.xml
