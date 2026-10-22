@@ -27,6 +27,8 @@ import { Badge } from '../common/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { MENU_TEMPLATES, MenuTemplateDefinition, TemplateCategory, TemplateDishItem } from '../../data/menuTemplatesData';
 import { FoodLanguageCode } from '../../types';
 import { SofraFlowTemplateRenderer } from '../customer/SofraFlowTemplateRenderer';
@@ -245,7 +247,7 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
   };
 
   // --- UNIFIED DRAFT CREATION LOGIC ---
-  const finalizeMenuCreation = (
+  const finalizeMenuCreation = async (
     menuName: string,
     categoriesToSave: TemplateCategory[],
     templateId?: string
@@ -253,11 +255,11 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
     setIsFinalizing(true);
 
     try {
-      // 1. Create categories and products in tenant DB
+      // 1. Create categories and products in local DB (synchronous client cache)
       const createdCategoryIds: string[] = [];
       const createdProductIds: string[] = [];
 
-      categoriesToSave.forEach((cat, catIdx) => {
+      for (const [catIdx, cat] of categoriesToSave.entries()) {
         const newCat = db.createCategory({
           restaurantId: activeRestaurant.id,
           name: {
@@ -269,7 +271,7 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
         });
         createdCategoryIds.push(newCat.id);
 
-        cat.items.forEach((item, itemIdx) => {
+        for (const [itemIdx, item] of cat.items.entries()) {
           const newProd = db.createProduct({
             restaurantId: activeRestaurant.id,
             categoryId: newCat.id,
@@ -296,8 +298,8 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
             sortOrder: itemIdx + 1
           });
           createdProductIds.push(newProd.id);
-        });
-      });
+        }
+      }
 
       // 2. Generate clean slug
       const generatedSlug = `${menuName
@@ -306,7 +308,7 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
         .replace(/[^a-z0-9]/g, '-')
         .replace(/-+/g, '-')}-${Date.now().toString().slice(-4)}`;
 
-      // 3. Create Draft Menu in tenant DB (Status: 'draft' - never auto-published)
+      // 3. Create Draft Menu in local DB (Status: 'draft' - never auto-published)
       const createdMenu = db.createMenu({
         restaurantId: activeRestaurant.id,
         name: menuName,
@@ -321,10 +323,65 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
         isDefault: false
       });
 
+      // 4. Also persist to Supabase PostgreSQL if configured
+      if (isSupabaseConfigured) {
+        try {
+          const supaMenu = await supabaseService.createMenu(activeRestaurant.id, {
+            name: menuName,
+            description: isEn
+              ? `Created with Zina AI Menu Creator (${templateId || 'AI Assisted'})`
+              : `Créé avec Zina AI Menu Creator (${templateId || 'Assisté par IA'})`,
+            slug: generatedSlug,
+            status: 'draft',
+            is_default: false,
+            enabled_languages: enabledLanguages
+          });
+
+          // Also save categories and products in Supabase
+          for (const [catIdx, cat] of categoriesToSave.entries()) {
+            const supaCat = await supabaseService.createCategory(activeRestaurant.id, {
+              name: {
+                en: cat.name.en,
+                fr: cat.name.fr,
+                ar: cat.name.ar || ''
+              },
+              sort_order: catIdx + 1
+            });
+            if (supaCat) {
+              for (const [itemIdx, item] of cat.items.entries()) {
+                await supabaseService.createProduct(activeRestaurant.id, {
+                  category_id: supaCat.id,
+                  name: {
+                    en: item.name.en,
+                    fr: item.name.fr,
+                    ar: item.name.ar || ''
+                  },
+                  description: {
+                    en: item.description.en,
+                    fr: item.description.fr,
+                    ar: ''
+                  },
+                  price: item.price || 0,
+                  currency: 'MAD',
+                  image_url:
+                    item.imageUrl ||
+                    'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&auto=format&fit=crop&q=80',
+                  is_available: true,
+                  dietary_tags: item.dietary ? [item.dietary] : [],
+                  sort_order: itemIdx + 1
+                });
+              }
+            }
+          }
+        } catch (supaErr) {
+          console.warn('[ZinaMenuCreatorModal] Supabase persistence error:', supaErr);
+        }
+      }
+
       setIsFinalizing(false);
       handleClose();
 
-      // 4. Navigate directly to the existing menu detail/editor page
+      // 5. Navigate directly to the existing menu detail/editor page
       navigate(`/app/menus/${createdMenu.id}`);
     } catch (e) {
       console.error('Error creating menu draft:', e);
@@ -854,9 +911,9 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>{isEn ? 'Refine prompt' : 'Modifier le prompt'}</span>
                 </button>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{isEn ? 'Proposed Structure' : 'Structure Proposée'}</span>
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'AI Draft Heuristic (Backend API Pending)' : 'Brouillon Heuristique IA (API en attente)'}</span>
                 </span>
               </div>
 

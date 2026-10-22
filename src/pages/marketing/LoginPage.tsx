@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { LanguageSelector } from '../../components/common/LanguageSelector';
 import { ThemeSwitcher } from '../../components/common/ThemeSwitcher';
@@ -20,10 +20,13 @@ export const LoginPage: React.FC = () => {
   const { language } = useLanguage();
   const isEn = language === 'en';
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = (location.state as any)?.from?.pathname || '/app/overview';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError(
         isEn
           ? 'Please enter your email and password.'
@@ -36,28 +39,25 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       await login(email, password);
-      navigate('/app/overview');
+      navigate(from, { replace: true });
     } catch (err: any) {
+      console.error('[LoginPage] Sign in failed:', err);
+      let msg = err.message || '';
+      if (msg.includes('Invalid login credentials')) {
+        msg = isEn
+          ? 'Invalid email or password. Please check your credentials.'
+          : 'Adresse e-mail ou mot de passe incorrect.';
+      } else if (msg.includes('Email not confirmed')) {
+        msg = isEn
+          ? 'Please verify your email address before signing in.'
+          : 'Veuillez confirmer votre e-mail avant de vous connecter.';
+      }
       setError(
-        err.message ||
+        msg ||
           (isEn
             ? 'Login failed. Please verify your credentials.'
             : 'Échec de connexion. Vérifiez vos identifiants.')
       );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickDemoLogin = async (demoEmail: string) => {
-    setLoading(true);
-    setEmail(demoEmail);
-    setPassword('DemoPassword123!');
-    try {
-      await login(demoEmail, 'DemoPassword123!');
-      navigate('/app/overview');
-    } catch (e: any) {
-      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -108,34 +108,6 @@ export const LoginPage: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-[var(--bg-card)] py-8 px-6 sm:px-10 rounded-3xl border border-[var(--border-subtle)] shadow-xl space-y-6">
           
-          {/* Quick Demo Access Bar */}
-          <div className="p-3.5 rounded-2xl bg-brand-orange/5 border border-brand-orange/20 space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-brand-orange">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isEn ? 'One-Click Demo Access' : 'Accès Démo en 1 Clic'}</span>
-            </div>
-            <p className="text-[11px] text-[var(--text-secondary)] leading-snug">
-              {isEn
-                ? 'Test the merchant management workspace instantly without typing credentials:'
-                : 'Testez l’espace gérant instantanément sans saisir de mot de passe :'}
-            </p>
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('demo@sofraflow.ma')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[var(--bg-card)] border border-brand-orange/30 hover:border-brand-orange text-[11px] font-bold text-[var(--text-primary)] transition-all shadow-sm"
-              >
-                ☕ Café Atlas Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('bistro@sofraflow.ma')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[var(--bg-card)] border border-brand-orange/30 hover:border-brand-orange text-[11px] font-bold text-[var(--text-primary)] transition-all shadow-sm"
-              >
-                🍽️ Restaurant Demo
-              </button>
-            </div>
-          </div>
 
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">

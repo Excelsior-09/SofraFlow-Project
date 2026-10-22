@@ -18,15 +18,30 @@ import { Badge, OrderStatusBadge, WhatsAppStatusBadge } from '../../components/c
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Order } from '../../types';
 
 export const OverviewPage: React.FC = () => {
   const { activeRestaurant, user } = useAuth();
-  const { t, formatCurrency, formatTime } = useLanguage();
+  const { t, formatCurrency, formatTime, language } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
 
-  const loadData = () => {
-    if (activeRestaurant) {
+  const loadData = async () => {
+    if (!activeRestaurant) return;
+    if (isSupabaseConfigured) {
+      try {
+        const supaOrders = await supabaseService.getOrdersForRestaurant(activeRestaurant.id);
+        if (supaOrders.length > 0) {
+          setOrders(supaOrders);
+        } else {
+          setOrders(db.getOrders(activeRestaurant.id));
+        }
+      } catch (e) {
+        console.warn('[OverviewPage] Supabase getOrders warning:', e);
+        setOrders(db.getOrders(activeRestaurant.id));
+      }
+    } else {
       setOrders(db.getOrders(activeRestaurant.id));
     }
   };
@@ -42,7 +57,28 @@ export const OverviewPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <div className="p-8 text-center text-ink-secondary dark:text-[#97A7A0]">{t('common.loading')}</div>
+        <Card className="p-10 text-center space-y-4 max-w-lg mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-16 h-16 rounded-3xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <UtensilsCrossed className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-xl font-extrabold text-forest dark:text-[#F0F4F2] font-display">
+              {t('dashboard.greeting', { name: user?.fullName || 'Manager' })}
+            </h3>
+            <p className="text-xs text-ink-secondary dark:text-[#97A7A0] max-w-md mx-auto">
+              {language === 'en'
+                ? 'Welcome to SofraFlow! Set up your restaurant or café to activate your digital menus and smart QR ordering.'
+                : 'Bienvenue sur SofraFlow ! Configurez votre premier établissement pour activer vos cartes digitales et commandes QR.'}
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link to="/onboarding">
+              <Button size="md" variant="primary">
+                {language === 'en' ? 'Launch Setup Assistant' : 'Lancer l’Assistant de Configuration'}
+              </Button>
+            </Link>
+          </div>
+        </Card>
       </DashboardLayout>
     );
   }
@@ -276,8 +312,8 @@ export const OverviewPage: React.FC = () => {
                     <span className="text-[10px] text-ink-secondary dark:text-[#97A7A0]">Meta Business</span>
                   </div>
                 </div>
-                <Badge variant={activeRestaurant.whatsappConfig.enabled ? 'success' : 'neutral'}>
-                  {activeRestaurant.whatsappConfig.enabled ? t('common.active') : t('common.inactive')}
+                <Badge variant={activeRestaurant.whatsappConfig?.enabled ? 'success' : 'neutral'}>
+                  {activeRestaurant.whatsappConfig?.enabled ? t('common.active') : t('common.inactive')}
                 </Badge>
               </div>
 
@@ -285,19 +321,19 @@ export const OverviewPage: React.FC = () => {
                 <div className="flex justify-between py-1 border-b border-border-subtle/50 dark:border-[#233831]/50">
                   <span className="text-ink-secondary dark:text-[#97A7A0]">{t('whatsapp.destPhone')} :</span>
                   <span className="font-semibold text-ink-main dark:text-[#F0F4F2]">
-                    {activeRestaurant.whatsappConfig.destinationPhoneNumber || t('whatsapp.disconnected')}
+                    {activeRestaurant.whatsappConfig?.destinationPhoneNumber || t('whatsapp.disconnected')}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border-subtle/50 dark:border-[#233831]/50">
                   <span className="text-ink-secondary dark:text-[#97A7A0]">{t('whatsapp.templateName')} :</span>
                   <span className="font-mono text-[11px] text-forest dark:text-gold truncate max-w-[150px]">
-                    {activeRestaurant.whatsappConfig.templateName}
+                    {activeRestaurant.whatsappConfig?.templateName || 'sofraflow_order_notification_v1'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border-subtle/50 dark:border-[#233831]/50">
                   <span className="text-ink-secondary dark:text-[#97A7A0]">{t('whatsapp.apiProvider')} :</span>
                   <span className="font-semibold text-ink-main dark:text-[#F0F4F2]">
-                    {activeRestaurant.whatsappConfig.phoneNumberId ? 'Meta Cloud API' : 'Sandbox SOFRAFLOW'}
+                    {activeRestaurant.whatsappConfig?.phoneNumberId ? 'Meta Cloud API' : 'Sandbox SOFRAFLOW'}
                   </span>
                 </div>
               </div>

@@ -11,7 +11,8 @@ import {
   User,
   Phone,
   Calendar,
-  Check
+  Check,
+  ShoppingBag
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
@@ -41,7 +42,6 @@ export const OrderDetailPage: React.FC = () => {
     if (!orderId) return;
     const found = db.getOrderById(orderId);
     if (!found) {
-      navigate('/app/orders');
       return;
     }
     setOrder(found);
@@ -53,7 +53,31 @@ export const OrderDetailPage: React.FC = () => {
     return () => unsub();
   }, [orderId]);
 
-  if (!order || !activeRestaurant) return null;
+  if (!activeRestaurant || !order) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <ShoppingBag className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Commande introuvable
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            La commande demandée n'existe pas ou aucun établissement actif n'a été sélectionné.
+          </p>
+          <div className="pt-2">
+            <Link to="/app/orders">
+              <Button size="sm" variant="outline">
+                <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                Retour aux commandes
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   const handleStatusChange = (nextStatus: OrderStatus, note?: string) => {
     const updated = db.updateOrderStatus(order.id, activeRestaurant.id, nextStatus, note);
@@ -256,12 +280,12 @@ export const OrderDetailPage: React.FC = () => {
                   <span className="font-semibold text-ink-main dark:text-[#F0F4F2]">{formatCurrency(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-ink-secondary dark:text-[#97A7A0]">
-                  <span>{t('orders.tax', { percent: activeRestaurant.settings.taxRatePercent })}</span>
+                  <span>{t('orders.tax', { percent: activeRestaurant.settings?.taxRatePercent ?? 10 })}</span>
                   <span className="font-semibold text-ink-main dark:text-[#F0F4F2]">{formatCurrency(order.taxAmount)}</span>
                 </div>
                 {order.serviceFeeAmount > 0 && (
                   <div className="flex justify-between text-ink-secondary dark:text-[#97A7A0]">
-                    <span>{t('orders.serviceFee', { percent: activeRestaurant.settings.serviceFeePercent })}</span>
+                    <span>{t('orders.serviceFee', { percent: activeRestaurant.settings?.serviceFeePercent ?? 0 })}</span>
                     <span className="font-semibold text-ink-main dark:text-[#F0F4F2]">{formatCurrency(order.serviceFeeAmount)}</span>
                   </div>
                 )}
@@ -288,12 +312,12 @@ export const OrderDetailPage: React.FC = () => {
                 <p>
                   {t('whatsapp.destPhone')} :{' '}
                   <strong className="text-ink-main dark:text-[#F0F4F2]">
-                    {activeRestaurant.whatsappConfig.destinationPhoneNumber || t('whatsapp.disconnected')}
+                    {activeRestaurant.whatsappConfig?.destinationPhoneNumber || t('whatsapp.disconnected')}
                   </strong>
                 </p>
                 <p>
                   {t('whatsapp.templateName')} :{' '}
-                  <span className="font-mono text-forest dark:text-gold">{activeRestaurant.whatsappConfig.templateName}</span>
+                  <span className="font-mono text-forest dark:text-gold">{activeRestaurant.whatsappConfig?.templateName || 'sofraflow_order_notification_v1'}</span>
                 </p>
               </div>
 

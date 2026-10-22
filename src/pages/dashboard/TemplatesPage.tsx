@@ -14,12 +14,15 @@ import {
   Store
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
+import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { MENU_TEMPLATES, MenuTemplateDefinition } from '../../data/menuTemplatesData';
 import { SofraFlowTemplateRenderer } from '../../components/customer/SofraFlowTemplateRenderer';
 import { FoodLanguageCode } from '../../types';
@@ -37,7 +40,23 @@ export const TemplatesPage: React.FC = () => {
   const [previewLocale, setPreviewLocale] = useState<FoodLanguageCode>(language as FoodLanguageCode);
   const [isApplying, setIsApplying] = useState(false);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <LayoutTemplate className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour parcourir et appliquer nos templates de menus.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   // Filter templates
   const filteredTemplates = MENU_TEMPLATES.filter(tpl => {
@@ -49,7 +68,7 @@ export const TemplatesPage: React.FC = () => {
     return matchesSearch;
   });
 
-  const handleApplyTemplate = (template: MenuTemplateDefinition) => {
+  const handleApplyTemplate = async (template: MenuTemplateDefinition) => {
     setIsApplying(true);
 
     try {
@@ -57,7 +76,7 @@ export const TemplatesPage: React.FC = () => {
       const createdCategoryIds: string[] = [];
       const createdProductIds: string[] = [];
 
-      template.categories.forEach((catDef, catIdx) => {
+      for (const [catIdx, catDef] of template.categories.entries()) {
         const cat = db.createCategory({
           restaurantId: activeRestaurant.id,
           name: {
@@ -69,7 +88,7 @@ export const TemplatesPage: React.FC = () => {
         });
         createdCategoryIds.push(cat.id);
 
-        catDef.items.forEach((itemDef, itemIdx) => {
+        for (const [itemIdx, itemDef] of catDef.items.entries()) {
           const product = db.createProduct({
             restaurantId: activeRestaurant.id,
             categoryId: cat.id,
@@ -93,25 +112,76 @@ export const TemplatesPage: React.FC = () => {
             sortOrder: itemIdx + 1
           });
           createdProductIds.push(product.id);
-        });
-      });
+        }
+      }
 
       // 2. Create the new Menu
       const menuTitle = isEn
         ? `${template.name.en} Draft`
         : `Carte ${template.name.fr}`;
 
+      const generatedSlug = `${template.id.replace('template_', '')}-${Date.now().toString().slice(-4)}`;
+
       const newMenu = db.createMenu({
         restaurantId: activeRestaurant.id,
         name: menuTitle,
         description: template.tagline[language] || template.tagline.fr,
-        slug: `${template.id.replace('template_', '')}-${Date.now().toString().slice(-4)}`,
+        slug: generatedSlug,
         status: 'draft',
         categoryIds: createdCategoryIds,
         productIds: createdProductIds,
         enabledLanguages: ['fr', 'en', 'ar'],
         isDefault: db.getMenus(activeRestaurant.id).length === 0
       });
+
+      // 3. Persist to Supabase if configured
+      if (isSupabaseConfigured) {
+        try {
+          await supabaseService.createMenu(activeRestaurant.id, {
+            name: menuTitle,
+            description: template.tagline[language] || template.tagline.fr,
+            slug: generatedSlug,
+            status: 'draft',
+            is_default: false,
+            enabled_languages: ['fr', 'en', 'ar']
+          });
+
+          for (const [catIdx, catDef] of template.categories.entries()) {
+            const supaCat = await supabaseService.createCategory(activeRestaurant.id, {
+              name: {
+                fr: catDef.name.fr || catDef.name.en,
+                en: catDef.name.en || catDef.name.fr,
+                ar: catDef.name.ar || ''
+              },
+              sort_order: catIdx + 1
+            });
+            if (supaCat) {
+              for (const [itemIdx, itemDef] of catDef.items.entries()) {
+                await supabaseService.createProduct(activeRestaurant.id, {
+                  category_id: supaCat.id,
+                  name: {
+                    fr: itemDef.name.fr || itemDef.name.en,
+                    en: itemDef.name.en || itemDef.name.fr,
+                    ar: itemDef.name.ar || ''
+                  },
+                  description: {
+                    fr: itemDef.description.fr || itemDef.description.en,
+                    en: itemDef.description.en || itemDef.description.fr
+                  },
+                  price: itemDef.price,
+                  currency: 'MAD',
+                  image_url: itemDef.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
+                  is_available: true,
+                  dietary_tags: itemDef.dietary ? [itemDef.dietary as any] : [],
+                  sort_order: itemIdx + 1
+                });
+              }
+            }
+          }
+        } catch (supaErr) {
+          console.warn('[TemplatesPage] Supabase persistence error:', supaErr);
+        }
+      }
 
       // Navigate to the newly created menu editor
       navigate(`/app/menus/${newMenu.id}`);

@@ -8,6 +8,8 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { MenuCategory, Product } from '../../types';
 
 export const ProductsPage: React.FC = () => {
@@ -38,9 +40,13 @@ export const ProductsPage: React.FC = () => {
   const [allergensStr, setAllergensStr] = useState('');
 
   const loadData = () => {
-    if (!activeRestaurant) return;
-    setProducts(db.getProducts(activeRestaurant.id));
-    setCategories(db.getCategories(activeRestaurant.id));
+    if (activeRestaurant) {
+      setProducts(db.getProducts(activeRestaurant.id));
+      setCategories(db.getCategories(activeRestaurant.id));
+    } else {
+      setProducts([]);
+      setCategories([]);
+    }
   };
 
   useEffect(() => {
@@ -49,7 +55,23 @@ export const ProductsPage: React.FC = () => {
     return () => unsub();
   }, [activeRestaurant]);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <UtensilsCrossed className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour gérer vos produits et plats.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
@@ -114,14 +136,26 @@ export const ProductsPage: React.FC = () => {
         verifiedIngredients: parsedIngredients,
         verifiedAllergens: parsedAllergens
       });
+
+      if (isSupabaseConfigured) {
+        supabaseService.updateProduct(editingProduct.id, {
+          category_id: categoryId || categories[0]?.id || undefined,
+          name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
+          description: { fr: descFr, en: descEn, ar: descAr },
+          price: Number(price),
+          image_url: imageUrl.trim() || undefined,
+          is_available: isAvailable,
+          dietary_tags: dietaryTags
+        }).catch(err => console.warn('[ProductsPage] Supabase updateProduct error:', err));
+      }
     } else {
-      db.createProduct({
+      const created = db.createProduct({
         restaurantId: activeRestaurant.id,
         categoryId: categoryId || categories[0]?.id || 'cat_default',
         name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
         description: { fr: descFr, en: descEn, ar: descAr },
         price: Number(price),
-        currency: activeRestaurant.settings.currency || 'MAD',
+        currency: activeRestaurant?.settings?.currency || 'MAD',
         imageUrl: imageUrl.trim() || 'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600&auto=format&fit=crop&q=80',
         isAvailable,
         dietaryTags,
@@ -130,21 +164,48 @@ export const ProductsPage: React.FC = () => {
         optionGroups: [],
         sortOrder: products.length + 1
       });
+
+      if (isSupabaseConfigured) {
+        supabaseService.createProduct(activeRestaurant.id, {
+          category_id: categoryId || categories[0]?.id || 'cat_default',
+          name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
+          description: { fr: descFr, en: descEn, ar: descAr },
+          price: Number(price),
+          currency: activeRestaurant?.settings?.currency || 'MAD',
+          image_url: imageUrl.trim() || 'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600&auto=format&fit=crop&q=80',
+          is_available: isAvailable,
+          dietary_tags: dietaryTags,
+          sort_order: products.length + 1
+        }).catch(err => console.warn('[ProductsPage] Supabase createProduct error:', err));
+      }
     }
 
     setIsModalOpen(false);
   };
 
   const handleToggleAvailability = (product: Product) => {
+    const nextVal = !product.isAvailable;
     db.updateProduct({
       ...product,
-      isAvailable: !product.isAvailable
+      isAvailable: nextVal
     });
+
+    if (isSupabaseConfigured) {
+      supabaseService.updateProduct(product.id, {
+        is_available: nextVal
+      }).catch(err => console.warn('[ProductsPage] Supabase updateProduct error:', err));
+    }
   };
 
   const handleDelete = (id: string) => {
     if (confirm('Voulez-vous vraiment supprimer ce plat du catalogue ?')) {
       db.deleteProduct(id, activeRestaurant.id);
+
+      if (isSupabaseConfigured) {
+        supabaseService.deleteProduct(id).catch(err =>
+          console.warn('[ProductsPage] Supabase deleteProduct error:', err)
+        );
+      }
     }
   };
 

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Globe } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -14,10 +14,38 @@ export const LanguagesPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() =>
     activeRestaurant ? db.getProducts(activeRestaurant.id) : []
   );
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  if (!activeRestaurant) return null;
+  useEffect(() => {
+    if (activeRestaurant) {
+      const prods = db.getProducts(activeRestaurant.id);
+      setProducts(prods);
+      if (prods.length > 0 && !selectedProductId) {
+        setSelectedProductId(prods[0].id);
+      }
+    } else {
+      setProducts([]);
+    }
+  }, [activeRestaurant]);
+
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <Globe className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour configurer vos langues et traductions.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   const currentProduct = products.find(p => p.id === selectedProductId) || products[0];
 

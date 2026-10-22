@@ -1,27 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import { QrCode, Download, Copy, Check, ExternalLink, Printer, Sliders, Smartphone, Wifi } from 'lucide-react';
+import { QrCode, Download, Copy, Check, ExternalLink, Printer, Sliders, Smartphone, Wifi, Save } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { generateQrDataUrl, generateQrSvg, downloadFile } from '../../services/qrService';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 export const QrNfcPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
   const [qrColor, setQrColor] = useState<string>('#153E35');
   const [includeLogo, setIncludeLogo] = useState<boolean>(true);
-  const [wifiName, setWifiName] = useState<string>('LeJardin_Guest');
-  const [wifiPassword, setWifiPassword] = useState<string>('Marrakech2026');
+  const [wifiName, setWifiName] = useState<string>('');
+  const [wifiPassword, setWifiPassword] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedNfc, setCopiedNfc] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Destination target is strictly General Venue (customers enter table manually)
   const selectedTable = 'general';
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const baseUrl = activeRestaurant ? `${origin}/m/${activeRestaurant.slug}` : '';
   const targetUrl = baseUrl;
+
+  // Load persistent QR settings
+  useEffect(() => {
+    if (!activeRestaurant) return;
+    if (isSupabaseConfigured) {
+      supabaseService.getQrSettings(activeRestaurant.id).then((saved) => {
+        if (saved) {
+          if (saved.qrColor) setQrColor(saved.qrColor);
+          if (saved.includeLogo !== undefined) setIncludeLogo(saved.includeLogo);
+          if (saved.wifiName) setWifiName(saved.wifiName);
+          if (saved.wifiPassword) setWifiPassword(saved.wifiPassword);
+        } else {
+          setWifiName(`${activeRestaurant.name.replace(/\s+/g, '')}_Guest`);
+          setWifiPassword('');
+        }
+      });
+    } else {
+      setWifiName(`${activeRestaurant.name.replace(/\s+/g, '')}_Guest`);
+      setWifiPassword('');
+    }
+  }, [activeRestaurant]);
 
   useEffect(() => {
     if (!activeRestaurant || !targetUrl) return;
@@ -32,7 +57,44 @@ export const QrNfcPage: React.FC = () => {
     }).then(setQrDataUrl);
   }, [targetUrl, qrColor, activeRestaurant]);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <QrCode className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour générer vos QR codes de tables et tags NFC.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      if (isSupabaseConfigured) {
+        await supabaseService.saveQrSettings(activeRestaurant.id, {
+          qrColor,
+          includeLogo,
+          wifiName,
+          wifiPassword
+        });
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('[QrNfcPage] Failed to save QR settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(targetUrl);
@@ -199,6 +261,19 @@ export const QrNfcPage: React.FC = () => {
                       className="w-full px-2.5 py-1.5 rounded-lg border border-border-subtle text-xs"
                     />
                   </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs font-semibold"
+                    leftIcon={saveSuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Save className="w-3.5 h-3.5" />}
+                    onClick={handleSaveSettings}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : saveSuccess ? 'Settings Saved in Supabase!' : 'Save QR & WiFi Settings'}
+                  </Button>
                 </div>
               </div>
 

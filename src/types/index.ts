@@ -196,7 +196,7 @@ export interface User {
   email: string;
   fullName: string;
   restaurantId: string;
-  role: 'owner' | 'manager' | 'staff';
+  role: 'admin' | 'owner' | 'manager' | 'staff';
   preferredLanguage?: LanguageCode;
   preferredTheme?: 'light' | 'dark' | 'system';
 }
@@ -250,5 +250,34 @@ export interface DemoDish {
   popular?: boolean;
   dietary?: 'vegetarian' | 'halal' | 'chef_special';
   pairings?: string[]; // IDs of complementary items
+}
+
+export type MoroccanPaymentMethod = 'cih_bank' | 'attijariwafa_bank' | 'cash_plus' | 'western_union' | 'moneygram' | 'ria';
+
+export type PaymentVerificationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'cancelled';
+
+export interface SubscriptionPaymentRequest {
+  id: string;
+  restaurantId: string;
+  restaurantName?: string;
+  userId: string;
+  userName?: string;
+  plan: 'starter' | 'growth' | 'pro' | 'enterprise';
+  billingPeriod: 'monthly' | 'annual';
+  amount: number;
+  currency: string;
+  paymentMethod: MoroccanPaymentMethod;
+  transactionReference: string;
+  receiptUrl?: string;
+  receiptFileName?: string;
+  status: PaymentVerificationStatus;
+  rejectionReason?: string;
+  payerName?: string;
+  payerPhone?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
 }
 

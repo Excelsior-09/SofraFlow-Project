@@ -14,11 +14,14 @@ import { ContactPage } from './pages/marketing/ContactPage';
 import { LoginPage } from './pages/marketing/LoginPage';
 import { SignupPage } from './pages/marketing/SignupPage';
 import { ForgotPasswordPage } from './pages/marketing/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/marketing/ResetPasswordPage';
 import { ZinaOnboardingPage } from './pages/onboarding/ZinaOnboardingPage';
 import { SolutionsIndexPage } from './pages/marketing/SolutionsIndexPage';
 import { IndustrySolutionPage } from './pages/marketing/IndustrySolutionPage';
 import { BlogIndexPage } from './pages/marketing/BlogIndexPage';
 import { BlogArticlePage } from './pages/marketing/BlogArticlePage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Dashboard Pages
 import { OverviewPage } from './pages/dashboard/OverviewPage';
@@ -57,6 +60,7 @@ export function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/onboarding" element={<ZinaOnboardingPage />} />
                 <Route path="/demo" element={<Navigate to="/#demo-section" replace />} />
 
@@ -68,22 +72,30 @@ export function App() {
                 <Route path="/blog" element={<BlogIndexPage />} />
                 <Route path="/blog/:slug" element={<BlogArticlePage />} />
 
-                {/* Restaurant Dashboard Routes */}
-                <Route path="/app" element={<Navigate to="/app/overview" replace />} />
-                <Route path="/app/overview" element={<OverviewPage />} />
-                <Route path="/app/menus" element={<MenusPage />} />
-                <Route path="/app/menus/:menuId" element={<MenuDetailPage />} />
-                <Route path="/app/templates" element={<TemplatesPage />} />
-                <Route path="/app/products" element={<ProductsPage />} />
-                <Route path="/app/orders" element={<OrdersPage />} />
-                <Route path="/app/orders/:orderId" element={<OrderDetailPage />} />
-                <Route path="/app/qr-nfc" element={<QrNfcPage />} />
-                <Route path="/app/languages" element={<LanguagesPage />} />
-                <Route path="/app/whatsapp" element={<WhatsAppPage />} />
-                <Route path="/app/analytics" element={<AnalyticsPage />} />
-                <Route path="/app/settings" element={<SettingsPage />} />
-                <Route path="/app/billing" element={<BillingPage />} />
-                <Route path="/app/help" element={<HelpPage />} />
+                {/* Protected Restaurant Dashboard Routes */}
+                <Route
+                  element={
+                    <ErrorBoundary>
+                      <ProtectedRoute />
+                    </ErrorBoundary>
+                  }
+                >
+                  <Route path="/app" element={<Navigate to="/app/overview" replace />} />
+                  <Route path="/app/overview" element={<OverviewPage />} />
+                  <Route path="/app/menus" element={<MenusPage />} />
+                  <Route path="/app/menus/:menuId" element={<MenuDetailPage />} />
+                  <Route path="/app/templates" element={<TemplatesPage />} />
+                  <Route path="/app/products" element={<ProductsPage />} />
+                  <Route path="/app/orders" element={<OrdersPage />} />
+                  <Route path="/app/orders/:orderId" element={<OrderDetailPage />} />
+                  <Route path="/app/qr-nfc" element={<QrNfcPage />} />
+                  <Route path="/app/languages" element={<LanguagesPage />} />
+                  <Route path="/app/whatsapp" element={<WhatsAppPage />} />
+                  <Route path="/app/analytics" element={<AnalyticsPage />} />
+                  <Route path="/app/settings" element={<SettingsPage />} />
+                  <Route path="/app/billing" element={<BillingPage />} />
+                  <Route path="/app/help" element={<HelpPage />} />
+                </Route>
 
                 {/* Customer-facing Digital Menu Routes */}
                 <Route path="/m/:restaurantSlug" element={<PublicMenuPage />} />

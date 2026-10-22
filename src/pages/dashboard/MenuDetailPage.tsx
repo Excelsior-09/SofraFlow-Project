@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Check, ExternalLink, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Check, ExternalLink, Save, BookOpen } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -9,6 +9,8 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Menu, MenuCategory, Product } from '../../types';
 
 export const MenuDetailPage: React.FC = () => {
@@ -32,7 +34,6 @@ export const MenuDetailPage: React.FC = () => {
     if (!activeRestaurant || !menuId) return;
     const found = db.getMenuById(menuId, activeRestaurant.id);
     if (!found) {
-      navigate('/app/menus');
       return;
     }
     setMenu(found);
@@ -46,15 +47,52 @@ export const MenuDetailPage: React.FC = () => {
     return () => unsub();
   }, [activeRestaurant, menuId]);
 
-  if (!menu || !activeRestaurant) return null;
+  if (!activeRestaurant || !menu) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Menu introuvable
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Le menu demandé n'existe pas ou aucun établissement actif n'a été sélectionné.
+          </p>
+          <div className="pt-2">
+            <Link to="/app/menus">
+              <Button size="sm" variant="outline">
+                <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                Retour aux menus
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     db.updateMenu(menu);
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateMenu(menu.id, {
+          name: menu.name,
+          description: menu.description,
+          slug: menu.slug,
+          status: menu.status,
+          is_published: menu.status === 'published'
+        });
+      } catch (e) {
+        console.warn('[MenuDetailPage] Supabase updateMenu warning:', e);
+      }
+    }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleAddCategory = (e: React.FormEvent) => {
+  const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catNameFr.trim() && !catNameEn.trim()) return;
 
@@ -67,6 +105,21 @@ export const MenuDetailPage: React.FC = () => {
       },
       sortOrder: categories.length + 1
     });
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.createCategory(activeRestaurant.id, {
+          name: {
+            fr: catNameFr || catNameEn,
+            en: catNameEn || catNameFr,
+            ar: catNameAr || ''
+          },
+          sort_order: categories.length + 1
+        });
+      } catch (err) {
+        console.warn('[MenuDetailPage] Supabase createCategory warning:', err);
+      }
+    }
 
     setCatNameEn('');
     setCatNameFr('');

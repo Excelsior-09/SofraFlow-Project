@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -28,12 +28,15 @@ import { LanguageSelector } from '../../components/common/LanguageSelector';
 import { ThemeSwitcher } from '../../components/common/ThemeSwitcher';
 import { SEO } from '../../components/common/SEO';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { BusinessSector, ZinaOnboardingState } from '../../types';
 
 export const ZinaOnboardingPage: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
+  const { isAuthenticated, user, createBusiness } = useAuth();
   const isEn = language === 'en';
   const navigate = useNavigate();
+  const hasCreatedBusinessRef = useRef(false);
 
   // Typed Onboarding State
   const [formData, setFormData] = useState<ZinaOnboardingState>({
@@ -102,6 +105,26 @@ export const ZinaOnboardingPage: React.FC = () => {
               origin: { y: 0.6 }
             });
           } catch (e) {}
+
+          // Auto-persist business if user is authenticated and not created yet
+          if (isAuthenticated && user && !hasCreatedBusinessRef.current && formData.restaurantName.trim()) {
+            hasCreatedBusinessRef.current = true;
+            const cleanSlug = formData.restaurantName
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]/g, '-')
+              .replace(/-+/g, '-');
+
+            createBusiness({
+              name: formData.restaurantName.trim(),
+              slug: `${cleanSlug}-${Date.now().toString().slice(-4)}`,
+              phone: formData.whatsappPhone,
+              city: formData.city,
+              description: `Welcome to ${formData.restaurantName}. Type: ${formData.businessType}. Managed by ${formData.managerName || 'Owner'}.`
+            }).catch(err => {
+              console.warn('[ZinaOnboarding] Business auto-creation notice:', err);
+            });
+          }
         }
       }, 300);
     }
@@ -823,13 +846,23 @@ export const ZinaOnboardingPage: React.FC = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                <a
-                  href="/#demo"
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-orange hover:bg-orange-700 text-white font-bold text-xs sm:text-sm shadow-md transition-colors flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-200" />
-                  <span>{t('zina.step10.exploreDemoBtn')}</span>
-                </a>
+                {isAuthenticated ? (
+                  <Link
+                    to="/app/overview"
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-orange hover:bg-orange-700 text-white font-bold text-xs sm:text-sm shadow-md transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-200" />
+                    <span>{isEn ? 'Go to My Dashboard' : 'Accéder à mon tableau de bord'}</span>
+                  </Link>
+                ) : (
+                  <a
+                    href="/#demo"
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-orange hover:bg-orange-700 text-white font-bold text-xs sm:text-sm shadow-md transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-200" />
+                    <span>{t('zina.step10.exploreDemoBtn')}</span>
+                  </a>
+                )}
 
                 <Link
                   to="/"

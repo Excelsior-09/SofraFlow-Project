@@ -26,6 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { ThemeSwitcher } from '../common/ThemeSwitcher';
 import { LanguageSelector } from '../common/LanguageSelector';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { db } from '../../services/db';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -100,7 +101,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   {activeRestaurant?.name || 'My Restaurant'}
                 </p>
                 <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] truncate">
-                  {activeRestaurant?.city}, {activeRestaurant?.country}
+                  {activeRestaurant ? `${activeRestaurant.city || 'Maroc'}, ${activeRestaurant.country || 'Maroc'}` : 'Aucun établissement actif'}
                 </p>
               </div>
             </div>
@@ -225,7 +226,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               <h2 className="text-base sm:text-lg font-bold text-forest dark:text-[#F0F4F2] font-display">
                 {activeRestaurant?.name || t('common.dashboard')}
               </h2>
-              {activeRestaurant?.whatsappConfig.enabled && (
+              {activeRestaurant?.whatsappConfig?.enabled && (
                 <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-status-success-bg dark:bg-[#102B20] text-status-success dark:text-[#4ADE80] border border-status-success/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-status-success dark:bg-[#4ADE80]" />
                   {t('dashboard.whatsappLive')}
@@ -341,7 +342,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
         {/* Page Container */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

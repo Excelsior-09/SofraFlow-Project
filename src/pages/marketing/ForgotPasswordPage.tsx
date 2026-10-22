@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
 import { LanguageSelector } from '../../components/common/LanguageSelector';
 import { ThemeSwitcher } from '../../components/common/ThemeSwitcher';
 import { SEO } from '../../components/common/SEO';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const ForgotPasswordPage: React.FC = () => {
@@ -13,12 +14,13 @@ export const ForgotPasswordPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { resetPassword } = useAuth();
   const { language } = useLanguage();
   const isEn = language === 'en';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    if (!email.trim()) {
       setError(
         isEn ? 'Please enter your business email.' : 'Veuillez saisir votre adresse e-mail professionnelle.'
       );
@@ -28,11 +30,18 @@ export const ForgotPasswordPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Front-end simulation:
-    setTimeout(() => {
+    try {
+      const res = await resetPassword(email.trim());
+      if (res.success) {
+        setSubmitted(true);
+      } else {
+        setError(res.error || (isEn ? 'Failed to send recovery link.' : 'Échec de l’envoi du lien de récupération.'));
+      }
+    } catch (err: any) {
+      setError(err.message || (isEn ? 'An unexpected error occurred.' : 'Une erreur inattendue est survenue.'));
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 600);
+    }
   };
 
   return (

@@ -15,6 +15,8 @@ import { OrderStatusBadge, WhatsAppStatusBadge } from '../../components/common/B
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Order, OrderStatus } from '../../types';
 
 export const OrdersPage: React.FC = () => {
@@ -25,8 +27,23 @@ export const OrdersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const loadOrders = () => {
-    if (activeRestaurant) {
+  const loadOrders = async () => {
+    if (!activeRestaurant) {
+      setOrders([]);
+      return;
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const supaOrders = await supabaseService.getOrdersForRestaurant(activeRestaurant.id);
+        if (supaOrders.length > 0) {
+          setOrders(supaOrders);
+        } else {
+          setOrders(db.getOrders(activeRestaurant.id));
+        }
+      } catch (err) {
+        setOrders(db.getOrders(activeRestaurant.id));
+      }
+    } else {
       setOrders(db.getOrders(activeRestaurant.id));
     }
   };
@@ -37,10 +54,32 @@ export const OrdersPage: React.FC = () => {
     return () => unsub();
   }, [activeRestaurant]);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <ShoppingBag className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour visualiser et gérer vos commandes en direct.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   const handleUpdateStatus = (orderId: string, nextStatus: OrderStatus) => {
     db.updateOrderStatus(orderId, activeRestaurant.id, nextStatus, `Updated via orders screen to ${nextStatus}`);
+
+    if (isSupabaseConfigured) {
+      supabaseService.updateOrderStatus(orderId, nextStatus).catch(e =>
+        console.warn('[OrdersPage] Supabase updateOrderStatus warning:', e)
+      );
+    }
   };
 
   const filteredOrders = orders.filter(o => {

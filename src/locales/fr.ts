@@ -73,7 +73,7 @@ export const fr = {
     whatsappApi: 'Notifications WhatsApp',
     salesAnalytics: 'Statistiques de vente',
     restaurantSettings: 'Paramètres du restaurant',
-    subscriptionBilling: 'Abonnement & Facturation',
+    subscriptionBilling: 'Abonnement et paiement',
     setupGuideHelp: 'Guide d’installation & Aide',
     activeRestaurant: 'Restaurant actif',
     switchRestaurant: 'Changer d’établissement',

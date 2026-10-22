@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Copy, ExternalLink, Sparkles, ArrowRight, LayoutTemplate } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Sparkles, ArrowRight, LayoutTemplate, AlertCircle, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -10,34 +10,79 @@ import { ZinaMenuCreatorModal } from '../../components/dashboard/ZinaMenuCreator
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Menu } from '../../types';
 
 export const MenusPage: React.FC = () => {
-  const { activeRestaurant } = useAuth();
+  const { activeRestaurant, user } = useAuth();
   const { language, t } = useLanguage();
   const isEn = language === 'en';
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isZinaCreatorOpen, setIsZinaCreatorOpen] = useState(false);
   const [newMenuName, setNewMenuName] = useState('');
   const [newMenuDesc, setNewMenuDesc] = useState('');
   const [newMenuSlug, setNewMenuSlug] = useState('');
 
-  const loadMenus = () => {
-    if (activeRestaurant) {
+  const loadMenus = async () => {
+    if (!activeRestaurant) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      if (isSupabaseConfigured) {
+        const supaMenus = await supabaseService.getMenusForRestaurant(activeRestaurant.id);
+        if (supaMenus.length > 0) {
+          setMenus(supaMenus);
+        } else {
+          // If no menus found on Supabase for this restaurant, check local db fallback
+          const localMenus = db.getMenus(activeRestaurant.id);
+          setMenus(localMenus);
+        }
+      } else {
+        setMenus(db.getMenus(activeRestaurant.id));
+      }
+    } catch (err: any) {
+      console.error('[MenusPage] Failed to fetch menus:', err);
+      setErrorMessage(err?.message || (isEn ? 'Failed to load menus' : 'Échec du chargement des menus'));
+      // Keep existing local menus if available
       setMenus(db.getMenus(activeRestaurant.id));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     loadMenus();
-    const unsub = db.subscribe(loadMenus);
+    const unsub = db.subscribe(() => {
+      loadMenus();
+    });
     return () => unsub();
   }, [activeRestaurant]);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <LayoutTemplate className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            {isEn ? 'No restaurant profile selected' : 'Aucun établissement sélectionné'}
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            {isEn
+              ? 'Please select or register a restaurant to manage digital menus.'
+              : 'Veuillez sélectionner ou créer votre établissement pour gérer vos cartes et menus.'}
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMenuName.trim()) return;
 
@@ -45,6 +90,7 @@ export const MenusPage: React.FC = () => {
     const categories = db.getCategories(activeRestaurant.id);
     const products = db.getProducts(activeRestaurant.id);
 
+    // 1. Sync to local DB for immediate UI update
     db.createMenu({
       restaurantId: activeRestaurant.id,
       name: newMenuName,
@@ -57,39 +103,100 @@ export const MenusPage: React.FC = () => {
       isDefault: menus.length === 0
     });
 
+    // 2. Persist to Supabase if configured
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.createMenu(activeRestaurant.id, {
+          name: newMenuName,
+          description: newMenuDesc || 'Carte restaurant',
+          slug,
+          status: 'published',
+          is_default: menus.length === 0,
+          enabled_languages: ['fr', 'en', 'ar']
+        });
+      } catch (err) {
+        console.warn('[MenusPage] Supabase menu persistence warning:', err);
+      }
+    }
+
     setNewMenuName('');
     setNewMenuDesc('');
     setNewMenuSlug('');
     setIsCreateModalOpen(false);
+    await loadMenus();
   };
 
-  const handleTogglePublish = (menu: Menu) => {
+  const handleTogglePublish = async (menu: Menu) => {
     const nextStatus = menu.status === 'published' ? 'draft' : 'published';
     db.updateMenu({
       ...menu,
       status: nextStatus
     });
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateMenu(menu.id, {
+          status: nextStatus,
+          is_published: nextStatus === 'published'
+        });
+      } catch (err) {
+        console.warn('[MenusPage] Supabase updateMenu warning:', err);
+      }
+    }
+    await loadMenus();
   };
 
-  const handleDuplicate = (menu: Menu) => {
+  const handleDuplicate = async (menu: Menu) => {
+    const dupName = `${menu.name} (Copie)`;
+    const dupSlug = `${menu.slug}-copie-${Date.now().toString().slice(-4)}`;
+
     db.createMenu({
       restaurantId: menu.restaurantId,
-      name: `${menu.name} (Copie)`,
+      name: dupName,
       description: menu.description,
-      slug: `${menu.slug}-copie-${Date.now().toString().slice(-4)}`,
+      slug: dupSlug,
       status: 'draft',
       categoryIds: [...menu.categoryIds],
       productIds: [...menu.productIds],
       enabledLanguages: [...menu.enabledLanguages],
       isDefault: false
     });
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.createMenu(activeRestaurant.id, {
+          name: dupName,
+          description: menu.description,
+          slug: dupSlug,
+          status: 'draft',
+          is_default: false,
+          enabled_languages: [...menu.enabledLanguages]
+        });
+      } catch (err) {
+        console.warn('[MenusPage] Supabase duplicate menu warning:', err);
+      }
+    }
+    await loadMenus();
   };
 
-  const handleArchive = (menu: Menu) => {
+  const handleArchive = async (menu: Menu) => {
+    const nextStatus = menu.status === 'archived' ? 'draft' : 'archived';
     db.updateMenu({
       ...menu,
-      status: menu.status === 'archived' ? 'draft' : 'archived'
+      status: nextStatus
     });
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateMenu(menu.id, {
+          status: nextStatus,
+          is_published: false
+        });
+      } catch (err) {
+        console.warn('[MenusPage] Supabase archive warning:', err);
+      }
+    }
+    await loadMenus();
   };
 
   return (
@@ -177,6 +284,59 @@ export const MenusPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Loading Spinner */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-6 text-xs text-ink-secondary dark:text-[#97A7A0] gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-forest dark:text-gold" />
+            <span>{isEn ? 'Synchronizing digital menus...' : 'Synchronisation des menus...'}</span>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && menus.length === 0 && (
+          <Card className="p-10 text-center space-y-4 border-dashed border-2 border-border-subtle dark:border-[#233831] bg-white/50 dark:bg-[#14241F]/50">
+            <div className="w-14 h-14 rounded-2xl bg-[#EA580C]/10 text-[#EA580C] flex items-center justify-center mx-auto">
+              <Sparkles className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base sm:text-lg font-bold text-forest dark:text-[#F0F4F2]">
+                {isEn ? 'No digital menus yet' : 'Aucun menu créé pour le moment'}
+              </h3>
+              <p className="text-xs text-ink-secondary dark:text-[#97A7A0] max-w-md mx-auto">
+                {isEn
+                  ? 'Generate your first digital menu with Zina AI Menu Creator in seconds, or create a blank manual menu.'
+                  : 'Générez votre première carte digitale avec Zina AI Menu Creator en quelques secondes, ou commencez par une carte manuelle.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setIsZinaCreatorOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#D97706] text-white font-bold text-xs shadow-md shadow-[#EA580C]/25"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Zina AI Menu Creator</span>
+              </button>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Plus className="w-4 h-4" />}
+                onClick={() => setIsCreateModalOpen(true)}
+                className="text-xs"
+              >
+                {isEn ? 'Manual Menu' : 'Créer manuellement'}
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* Menu Cards List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

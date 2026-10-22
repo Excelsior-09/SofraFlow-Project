@@ -204,6 +204,53 @@ export const PricingSection: React.FC = () => {
           })}
         </div>
 
+        {/* Modes de paiement disponibles au Maroc */}
+        <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#101E1A] border border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-2.5 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold text-xs font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Modes de paiement disponibles au Maroc</span>
+            </div>
+            <p className="text-xs sm:text-sm font-medium text-[var(--text-primary)] max-w-2xl leading-relaxed">
+              {isEn
+                ? "Pay for your subscription via domestic Moroccan bank transfer or local money transfer services, tailored to your restaurant accounting needs."
+                : "Payez votre abonnement par virement bancaire ou via les services de transfert d'argent disponibles au Maroc, selon les modalités proposées."}
+            </p>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-forest dark:text-[#F0F4F2]">
+                Virement bancaire
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[#E0311D]">
+                CIH Bank
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[#D38800]">
+                Attijariwafa bank
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[#EA580C]">
+                Cash Plus
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
+                Western Union
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[#E0311D]">
+                MoneyGram
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-xl bg-ivory dark:bg-[#152520] border border-[var(--border-subtle)] text-xs font-bold text-[#F15A24]">
+                Ria
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-shrink-0">
+            <Link to="/login?redirect=/app/billing">
+              <button className="px-6 py-3.5 rounded-xl font-bold text-sm bg-brand-orange hover:bg-brand-orange-hover text-white shadow-md flex items-center gap-2 transition-all">
+                <span>Choisir mon abonnement</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+        </div>
+
         {/* Enterprise & Custom Inquiries */}
         <div className="mt-12 text-center text-xs text-[var(--text-secondary)]">
           {isEn

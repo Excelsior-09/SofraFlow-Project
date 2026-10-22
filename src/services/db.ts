@@ -6,7 +6,9 @@ import {
   Product,
   Restaurant,
   User,
-  WhatsAppConfig
+  WhatsAppConfig,
+  SubscriptionPaymentRequest,
+  PaymentVerificationStatus
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -17,7 +19,8 @@ const STORAGE_KEYS = {
   ORDERS: 'sofraflow_orders_v1',
   NOTIFICATIONS: 'sofraflow_notifications_v1',
   CURRENT_USER: 'sofraflow_current_user_v1',
-  ACTIVE_RESTAURANT_ID: 'sofraflow_active_restaurant_id_v1'
+  ACTIVE_RESTAURANT_ID: 'sofraflow_active_restaurant_id_v1',
+  PAYMENT_REQUESTS: 'sofraflow_payment_requests_v1'
 };
 
 // Seed Data
@@ -969,6 +972,79 @@ class DatabaseService {
     this.notify();
   }
 
+  // -------------------------------------------------------------
+  // Subscription Payment Requests
+  // -------------------------------------------------------------
+  public getPaymentRequests(restaurantId?: string, isStaffOrAdmin: boolean = false): SubscriptionPaymentRequest[] {
+    const raw = appStorage.getItem(STORAGE_KEYS.PAYMENT_REQUESTS);
+    const requests: SubscriptionPaymentRequest[] = raw ? JSON.parse(raw) : [];
+    if (restaurantId && !isStaffOrAdmin) {
+      return requests.filter(r => r.restaurantId === restaurantId);
+    }
+    return requests;
+  }
+
+  public getPaymentRequestById(id: string): SubscriptionPaymentRequest | null {
+    const requests = this.getPaymentRequests();
+    return requests.find(r => r.id === id) || null;
+  }
+
+  public createPaymentRequest(
+    data: Omit<SubscriptionPaymentRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>
+  ): SubscriptionPaymentRequest {
+    const requests = this.getPaymentRequests();
+    const newRequest: SubscriptionPaymentRequest = {
+      ...data,
+      id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      status: 'under_review',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    requests.unshift(newRequest);
+    appStorage.setItem(STORAGE_KEYS.PAYMENT_REQUESTS, JSON.stringify(requests));
+    this.notify();
+    return newRequest;
+  }
+
+  public updatePaymentRequestStatus(
+    id: string,
+    status: PaymentVerificationStatus,
+    details?: { reason?: string; verifierId?: string }
+  ): SubscriptionPaymentRequest | null {
+    const requests = this.getPaymentRequests();
+    const index = requests.findIndex(r => r.id === id);
+    if (index === -1) return null;
+
+    const current = requests[index];
+    const updated: SubscriptionPaymentRequest = {
+      ...current,
+      status,
+      rejectionReason: details?.reason || current.rejectionReason,
+      verifiedBy: details?.verifierId || current.verifiedBy,
+      verifiedAt: status === 'approved' || status === 'rejected' ? new Date().toISOString() : current.verifiedAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    requests[index] = updated;
+    appStorage.setItem(STORAGE_KEYS.PAYMENT_REQUESTS, JSON.stringify(requests));
+
+    // If approved, automatically update the restaurant's subscription plan & status
+    if (status === 'approved' && current.restaurantId) {
+      const rest = this.getRestaurantById(current.restaurantId);
+      if (rest) {
+        this.updateRestaurant({
+          ...rest,
+          subscriptionPlan: current.plan,
+          subscriptionStatus: 'active'
+        });
+      }
+    }
+
+    this.notify();
+    return updated;
+  }
+
   // Reset to initial seed state
   public resetToSeed(): void {
     appStorage.setItem(STORAGE_KEYS.RESTAURANTS, JSON.stringify(SEED_RESTAURANTS));
@@ -979,6 +1055,7 @@ class DatabaseService {
     appStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(SEED_USER));
     appStorage.setItem(STORAGE_KEYS.ACTIVE_RESTAURANT_ID, 'rest_marrakech_01');
     appStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    appStorage.removeItem(STORAGE_KEYS.PAYMENT_REQUESTS);
     this.notify();
   }
 }

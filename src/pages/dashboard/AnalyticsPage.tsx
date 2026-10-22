@@ -11,6 +11,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { BarChart3 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -31,6 +32,9 @@ export const AnalyticsPage: React.FC = () => {
     if (activeRestaurant) {
       setOrders(db.getOrders(activeRestaurant.id));
       setEvents(db.getNotificationEvents(activeRestaurant.id));
+    } else {
+      setOrders([]);
+      setEvents([]);
     }
   };
 
@@ -40,7 +44,23 @@ export const AnalyticsPage: React.FC = () => {
     return () => unsub();
   }, [activeRestaurant]);
 
-  if (!activeRestaurant) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <BarChart3 className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou configurer votre établissement pour visualiser vos métriques et performances commerciales.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   const validOrders = orders.filter(o => o.status !== 'cancelled');
   const completedOrders = orders.filter(o => o.status === 'completed');

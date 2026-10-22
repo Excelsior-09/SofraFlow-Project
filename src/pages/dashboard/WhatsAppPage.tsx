@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Save } from 'lucide-react';
+import { Send, Save, MessageSquare } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -8,6 +8,8 @@ import { Alert } from '../../components/common/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { testWhatsAppConnection } from '../../services/whatsappService';
 import { NotificationEvent, WhatsAppConfig } from '../../types';
 
@@ -15,7 +17,20 @@ export const WhatsAppPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
   const { t, formatTime } = useLanguage();
   const [config, setConfig] = useState<WhatsAppConfig | null>(() =>
-    activeRestaurant ? activeRestaurant.whatsappConfig : null
+    activeRestaurant
+      ? (activeRestaurant.whatsappConfig || {
+          restaurantId: activeRestaurant.id,
+          enabled: true,
+          destinationPhoneNumber: activeRestaurant.phone || '',
+          destinationName: 'Kitchen Dispatch',
+          apiProvider: 'meta_cloud_api',
+          phoneNumberId: '',
+          wabaId: '',
+          systemAccessToken: '',
+          templateName: 'sofraflow_order_notification_v1',
+          templateLanguage: 'fr'
+        })
+      : null
   );
   const [events, setEvents] = useState<NotificationEvent[]>([]);
   const [isTesting, setIsTesting] = useState(false);
@@ -30,22 +45,64 @@ export const WhatsAppPage: React.FC = () => {
 
   useEffect(() => {
     if (activeRestaurant) {
-      setConfig(activeRestaurant.whatsappConfig);
+      setConfig(
+        activeRestaurant.whatsappConfig || {
+          restaurantId: activeRestaurant.id,
+          enabled: true,
+          destinationPhoneNumber: activeRestaurant.phone || '',
+          destinationName: 'Kitchen Dispatch',
+          apiProvider: 'meta_cloud_api',
+          phoneNumberId: '',
+          wabaId: '',
+          systemAccessToken: '',
+          templateName: 'sofraflow_order_notification_v1',
+          templateLanguage: 'fr'
+        }
+      );
       loadEvents();
     }
     const unsub = db.subscribe(loadEvents);
     return () => unsub();
   }, [activeRestaurant]);
 
-  if (!activeRestaurant || !config) return null;
+  if (!activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour configurer les notifications WhatsApp en direct vers la cuisine.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
-  const handleSaveConfig = (e: React.FormEvent) => {
+  if (!config) return null;
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     const updatedRestaurant = {
       ...activeRestaurant,
       whatsappConfig: config
     };
     db.updateRestaurant(updatedRestaurant);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateRestaurant(activeRestaurant.id, {
+          whatsappConfig: config
+        });
+      } catch (err) {
+        console.warn('[WhatsAppPage] Supabase updateRestaurant warning:', err);
+      }
+    }
+
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };

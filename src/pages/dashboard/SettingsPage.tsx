@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Settings } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -7,19 +7,86 @@ import { Alert } from '../../components/common/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Restaurant } from '../../types';
 
 export const SettingsPage: React.FC = () => {
   const { activeRestaurant, refreshState } = useAuth();
   const { t } = useLanguage();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(() => activeRestaurant);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(() =>
+    activeRestaurant
+      ? {
+          ...activeRestaurant,
+          settings: activeRestaurant.settings || {
+            id: `settings_${activeRestaurant.id}`,
+            restaurantId: activeRestaurant.id,
+            currency: 'MAD',
+            taxRatePercent: 10,
+            serviceFeePercent: 0,
+            enableDineIn: true,
+            enableTakeaway: true,
+            enableDelivery: false,
+            requireCustomerPhone: false,
+            tableCount: 12,
+            openingHours: {}
+          }
+        }
+      : null
+  );
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  if (!restaurant || !activeRestaurant) return null;
+  useEffect(() => {
+    if (activeRestaurant) {
+      setRestaurant({
+        ...activeRestaurant,
+        settings: activeRestaurant.settings || {
+          id: `settings_${activeRestaurant.id}`,
+          restaurantId: activeRestaurant.id,
+          currency: 'MAD',
+          taxRatePercent: 10,
+          serviceFeePercent: 0,
+          enableDineIn: true,
+          enableTakeaway: true,
+          enableDelivery: false,
+          requireCustomerPhone: false,
+          tableCount: 12,
+          openingHours: {}
+        }
+      });
+    }
+  }, [activeRestaurant]);
 
-  const handleSave = (e: React.FormEvent) => {
+  if (!restaurant || !activeRestaurant) {
+    return (
+      <DashboardLayout>
+        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
+          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
+            <Settings className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
+            Aucun établissement actif
+          </h2>
+          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+            Veuillez sélectionner ou créer votre établissement pour modifier ses paramètres.
+          </p>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     db.updateRestaurant(restaurant);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateRestaurant(restaurant.id, restaurant);
+      } catch (err) {
+        console.warn('[SettingsPage] Supabase updateRestaurant warning:', err);
+      }
+    }
+
     refreshState();
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
