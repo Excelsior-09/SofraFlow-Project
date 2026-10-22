@@ -78,18 +78,53 @@ export const supabaseService = {
   // ------------------------------------------------------------------
   async getRestaurantsForOwner(ownerId: string): Promise<Restaurant[]> {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('owner_id', ownerId)
-      .order('created_at', { ascending: true });
+    try {
+      // 1. Direct owner restaurants
+      const { data: directRests, error: directErr } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('[Supabase] Error fetching owner restaurants:', error.message);
+      if (directErr) {
+        console.warn('[Supabase] Error fetching owner restaurants:', directErr.message);
+      }
+
+      // 2. Also check business_members for multi-venue or staff/manager memberships
+      let memberRestIds: string[] = [];
+      try {
+        const { data: memberData } = await supabase
+          .from('business_members')
+          .select('business_id')
+          .eq('user_id', ownerId)
+          .eq('status', 'active');
+        if (memberData && memberData.length > 0) {
+          memberRestIds = memberData.map(m => m.business_id);
+        }
+      } catch {
+        // Table might not exist yet
+      }
+
+      let allRows = directRests || [];
+      if (memberRestIds.length > 0) {
+        const existingIds = new Set(allRows.map(r => r.id));
+        const missingIds = memberRestIds.filter(id => !existingIds.has(id));
+        if (missingIds.length > 0) {
+          const { data: moreRests } = await supabase
+            .from('restaurants')
+            .select('*')
+            .in('id', missingIds);
+          if (moreRests && moreRests.length > 0) {
+            allRows = [...allRows, ...moreRests];
+          }
+        }
+      }
+
+      return allRows.map(r => supabaseService.mapRestaurantRow(r));
+    } catch (err) {
+      console.error('[Supabase] getRestaurantsForOwner exception:', err);
       return [];
     }
-
-    return (data || []).map(r => supabaseService.mapRestaurantRow(r));
   },
 
   async getRestaurantBySlug(slug: string): Promise<Restaurant | null> {
@@ -141,16 +176,50 @@ export const supabaseService = {
       city?: string;
       description?: string;
       address?: string;
+      contactEmail?: string;
     }
   ): Promise<Restaurant | null> {
     if (!isSupabaseConfigured) return null;
 
-    const insertPayload = {
+    // 1. Try atomic database RPC function first
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_restaurant', {
+        p_name: params.name,
+        p_slug: params.slug,
+        p_business_type: params.businessType || 'restaurant',
+        p_phone: params.phone || '+212600000000',
+        p_city: params.city || 'Casablanca',
+        p_address: params.address || 'Morocco',
+        p_description: params.description || `Welcome to ${params.name}. Explore our digital menu and order with ease.`,
+        p_contact_email: params.contactEmail || ''
+      });
+      if (!rpcError && rpcData) {
+        return supabaseService.mapRestaurantRow(rpcData);
+      }
+      if (rpcError && !rpcError.message.includes('function') && !rpcError.message.includes('not found')) {
+        console.warn('[Supabase] create_restaurant RPC note:', rpcError.message);
+      }
+    } catch (rpcErr) {
+      // Fall through to direct table insert
+    }
+
+    // 2. Direct table insert fallback
+    const validTypes = ['restaurant', 'cafe', 'snack', 'bakery', 'other'];
+    const businessType = validTypes.includes(params.businessType || '') ? params.businessType : 'restaurant';
+    const cleanSlug = params.slug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '') || `restaurant-${Date.now().toString().slice(-4)}`;
+
+    const insertPayload: Record<string, any> = {
       owner_id: ownerId,
-      name: params.name,
-      slug: params.slug.toLowerCase().trim(),
-      business_type: params.businessType || 'restaurant',
+      name: params.name.trim(),
+      slug: cleanSlug,
+      business_type: businessType,
       phone: params.phone || '+212600000000',
+      contact_email: params.contactEmail || null,
       city: params.city || 'Casablanca',
       description: params.description || `Welcome to ${params.name}. Explore our digital menu and order with ease.`,
       address: params.address || 'Morocco',
@@ -182,11 +251,24 @@ export const supabaseService = {
       subscription_status: 'active'
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('restaurants')
       .insert(insertPayload)
       .select()
       .single();
+
+    // If duplicate slug error, retry with randomized suffix
+    if (error && (error.code === '23505' || error.message.includes('slug'))) {
+      const fallbackSlug = `${cleanSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      insertPayload.slug = fallbackSlug;
+      const retry = await supabase
+        .from('restaurants')
+        .insert(insertPayload)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('[Supabase] Error creating restaurant:', error.message);

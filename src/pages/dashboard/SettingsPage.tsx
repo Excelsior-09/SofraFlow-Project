@@ -68,6 +68,7 @@ export const SettingsPage: React.FC = () => {
       : null
   );
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Security Tab States
@@ -137,6 +138,8 @@ export const SettingsPage: React.FC = () => {
   const handleSaveOperations = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
     try {
       db.updateRestaurant(restaurant);
 
@@ -149,6 +152,7 @@ export const SettingsPage: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('[SettingsPage] Error saving settings:', err);
+      setSaveError(err?.message || (isEn ? 'Failed to save settings. Please try again.' : 'Échec de l’enregistrement des paramètres. Veuillez réessayer.'));
     } finally {
       setIsSaving(false);
     }
@@ -296,6 +300,11 @@ export const SettingsPage: React.FC = () => {
             {saveSuccess && (
               <Alert type="success">
                 {t('settings.savedNotice')}
+              </Alert>
+            )}
+            {saveError && (
+              <Alert type="error">
+                {saveError}
               </Alert>
             )}
 

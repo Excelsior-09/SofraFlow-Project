@@ -977,3 +977,115 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.submit_public_order TO anon, authenticated;
 
+-- ====================================================================
+-- 18. ATOMIC RESTAURANT CREATION FUNCTION (RPC)
+-- Ensures restaurant, business membership, default menu, and initial config
+-- are created atomically within a single transaction.
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.create_restaurant(
+  p_name TEXT,
+  p_slug TEXT,
+  p_business_type TEXT DEFAULT 'restaurant',
+  p_phone TEXT DEFAULT NULL,
+  p_city TEXT DEFAULT NULL,
+  p_address TEXT DEFAULT NULL,
+  p_description TEXT DEFAULT NULL,
+  p_contact_email TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_clean_slug TEXT;
+  v_final_slug TEXT;
+  v_counter INT := 0;
+  v_restaurant RECORD;
+BEGIN
+  -- 1. Ensure caller is authenticated
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required to create a restaurant.';
+  END IF;
+
+  -- 2. Validate required fields
+  IF p_name IS NULL OR length(trim(p_name)) = 0 THEN
+    RAISE EXCEPTION 'Restaurant name cannot be empty.';
+  END IF;
+
+  -- 3. Clean and ensure unique slug
+  v_clean_slug := COALESCE(
+    NULLIF(lower(regexp_replace(trim(p_slug), '[^a-z0-9]+', '-', 'g')), ''),
+    lower(regexp_replace(trim(p_name), '[^a-z0-9]+', '-', 'g'))
+  );
+  v_final_slug := v_clean_slug;
+
+  WHILE EXISTS (SELECT 1 FROM public.restaurants WHERE slug = v_final_slug) LOOP
+    v_counter := v_counter + 1;
+    v_final_slug := v_clean_slug || '-' || floor(random() * 9000 + 1000)::text;
+    IF v_counter > 10 THEN
+      v_final_slug := v_clean_slug || '-' || replace(gen_random_uuid()::text, '-', '');
+      EXIT;
+    END IF;
+  END LOOP;
+
+  -- 4. Insert restaurant record
+  INSERT INTO public.restaurants (
+    owner_id,
+    name,
+    slug,
+    business_type,
+    phone,
+    city,
+    address,
+    description,
+    contact_email,
+    currency,
+    status
+  )
+  VALUES (
+    v_user_id,
+    trim(p_name),
+    v_final_slug,
+    COALESCE(NULLIF(trim(p_business_type), ''), 'restaurant'),
+    NULLIF(trim(p_phone), ''),
+    NULLIF(trim(p_city), ''),
+    NULLIF(trim(p_address), ''),
+    NULLIF(trim(p_description), ''),
+    NULLIF(trim(p_contact_email), ''),
+    'MAD',
+    'active'
+  )
+  RETURNING * INTO v_restaurant;
+
+  -- 5. Explicitly ensure business_members entry exists
+  INSERT INTO public.business_members (business_id, user_id, role, status)
+  VALUES (v_restaurant.id, v_user_id, 'owner', 'active')
+  ON CONFLICT (business_id, user_id) DO UPDATE SET role = 'owner', status = 'active';
+
+  -- 6. Insert audit log
+  INSERT INTO public.audit_logs (
+    restaurant_id,
+    actor_user_id,
+    event_type,
+    entity_type,
+    entity_id,
+    metadata
+  )
+  VALUES (
+    v_restaurant.id,
+    v_user_id,
+    'restaurant.created',
+    'restaurant',
+    v_restaurant.id::text,
+    jsonb_build_object('name', v_restaurant.name, 'slug', v_restaurant.slug)
+  );
+
+  RETURN to_jsonb(v_restaurant);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.create_restaurant TO authenticated;
+

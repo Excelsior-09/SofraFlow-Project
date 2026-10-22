@@ -23,9 +23,16 @@ import { isSupabaseConfigured } from '../../lib/supabase';
 import { Order } from '../../types';
 
 export const OverviewPage: React.FC = () => {
-  const { activeRestaurant, user } = useAuth();
+  const { activeRestaurant, allRestaurants, switchRestaurant, isLoading, user } = useAuth();
   const { t, formatCurrency, formatTime, language } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
+
+  // Auto-select restaurant if not active but available in allRestaurants
+  useEffect(() => {
+    if (!activeRestaurant && allRestaurants.length > 0) {
+      switchRestaurant(allRestaurants[0].id);
+    }
+  }, [activeRestaurant, allRestaurants, switchRestaurant]);
 
   const loadData = async () => {
     if (!activeRestaurant) return;
@@ -49,6 +56,19 @@ export const OverviewPage: React.FC = () => {
     });
     return () => unsub();
   }, [activeRestaurant]);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[350px] space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-orange" />
+          <p className="text-xs text-ink-secondary dark:text-dark-muted font-medium">
+            {language === 'en' ? 'Loading your establishment...' : 'Chargement de votre établissement...'}
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!activeRestaurant) {
     return (

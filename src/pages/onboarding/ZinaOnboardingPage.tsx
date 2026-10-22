@@ -56,6 +56,8 @@ export const ZinaOnboardingPage: React.FC = () => {
   });
 
   const [isTyping, setIsTyping] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdBusinessRecord, setCreatedBusinessRecord] = useState<any>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Synchronize language selection
@@ -89,44 +91,90 @@ export const ZinaOnboardingPage: React.FC = () => {
       return;
     }
 
-    if (formData.currentStep < 10) {
+    if (formData.currentStep === 9) {
+      handleFinalSubmit();
+      return;
+    }
+
+    if (formData.currentStep < 9) {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
-        const next = formData.currentStep + 1;
-        setFormData(prev => ({ ...prev, currentStep: next }));
-
-        // Fire celebration confetti when entering step 10
-        if (next === 10) {
-          try {
-            confetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 }
-            });
-          } catch (e) {}
-
-          // Auto-persist business if user is authenticated and not created yet
-          if (isAuthenticated && user && !hasCreatedBusinessRef.current && formData.restaurantName.trim()) {
-            hasCreatedBusinessRef.current = true;
-            const cleanSlug = formData.restaurantName
-              .toLowerCase()
-              .trim()
-              .replace(/[^a-z0-9]/g, '-')
-              .replace(/-+/g, '-');
-
-            createBusiness({
-              name: formData.restaurantName.trim(),
-              slug: `${cleanSlug}-${Date.now().toString().slice(-4)}`,
-              phone: formData.whatsappPhone,
-              city: formData.city,
-              description: `Welcome to ${formData.restaurantName}. Type: ${formData.businessType}. Managed by ${formData.managerName || 'Owner'}.`
-            }).catch(err => {
-              console.warn('[ZinaOnboarding] Business auto-creation notice:', err);
-            });
-          }
-        }
+        setFormData(prev => ({ ...prev, currentStep: prev.currentStep + 1 }));
       }, 300);
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    if (isSubmitting) return;
+    setValidationError(null);
+
+    if (!formData.restaurantName.trim()) {
+      setValidationError(isEn ? 'Please enter your establishment name.' : 'Veuillez saisir le nom de votre établissement.');
+      jumpToStep(2);
+      return;
+    }
+    if (!formData.city.trim()) {
+      setValidationError(isEn ? 'Please enter the city.' : 'Veuillez indiquer la ville.');
+      jumpToStep(5);
+      return;
+    }
+    if (!formData.whatsappPhone.trim()) {
+      setValidationError(isEn ? 'Please provide a valid WhatsApp phone number.' : 'Veuillez indiquer un numéro WhatsApp valide.');
+      jumpToStep(6);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (isAuthenticated && user) {
+        // Safe slug generation
+        const baseSlug = formData.restaurantName
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'mon-etablissement';
+
+        const finalSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+        const fullAddress = [formData.street, formData.area, formData.city].filter(Boolean).join(', ');
+
+        const res = await createBusiness({
+          name: formData.restaurantName.trim(),
+          slug: finalSlug,
+          phone: formData.whatsappPhone.trim(),
+          city: formData.city.trim(),
+          address: fullAddress,
+          businessType: formData.businessType === 'other' ? (formData.customBusinessType || 'restaurant') : formData.businessType,
+          contactEmail: formData.businessEmail.trim() || user.email || undefined,
+          description: `Establishment: ${formData.restaurantName}. Type: ${formData.businessType}. Manager: ${formData.managerName || 'Owner'}.`
+        });
+
+        if (!res) {
+          throw new Error(isEn ? 'Failed to create establishment in database. Please verify your connection and try again.' : 'Échec de la création de l’établissement dans la base de données. Veuillez réessayer.');
+        }
+
+        setCreatedBusinessRecord(res);
+      }
+
+      // Explicitly advance to celebration step after successful database save
+      setFormData(prev => ({ ...prev, currentStep: 10, isCompleted: true }));
+
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {}
+    } catch (err: any) {
+      console.error('[ZinaOnboarding] Persistence error:', err);
+      const msg = err?.message || (isEn ? 'Failed to persist establishment. Please try again.' : 'Échec de l’enregistrement de votre établissement. Veuillez réessayer.');
+      setValidationError(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -799,11 +847,21 @@ export const ZinaOnboardingPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={handleNextStep}
-                className="w-full py-4 rounded-2xl bg-brand-orange hover:bg-orange-700 text-white font-extrabold text-sm shadow-md transition-colors flex items-center justify-center gap-2 mt-2"
+                onClick={handleFinalSubmit}
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl bg-brand-orange hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-sm shadow-md transition-colors flex items-center justify-center gap-2 mt-2"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{t('zina.confirmBtn')}</span>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{isEn ? 'Saving your establishment...' : 'Enregistrement de votre établissement...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t('zina.confirmBtn')}</span>
+                  </>
+                )}
               </button>
             </div>
           )}

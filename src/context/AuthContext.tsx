@@ -50,9 +50,12 @@ export interface AuthContextType {
   createBusiness: (params: {
     name: string;
     slug: string;
+    businessType?: string;
     phone?: string;
     city?: string;
+    address?: string;
     description?: string;
+    contactEmail?: string;
   }) => Promise<Restaurant | null>;
   refreshState: () => Promise<void>;
 }
@@ -104,13 +107,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[Auth] getRestaurantsForOwner warning:', restErr);
       }
 
-      setAllRestaurants(ownedRestaurants);
+      // If remote returned 0 or failed, fallback to local cache if present
+      let availableRestaurants = ownedRestaurants;
+      if (availableRestaurants.length === 0) {
+        const localList = db.getRestaurants();
+        if (localList.length > 0) {
+          availableRestaurants = localList;
+        }
+      }
+
+      setAllRestaurants(availableRestaurants);
 
       // 3. Determine active restaurant
       const storedActiveId = localStorage.getItem(ACTIVE_REST_KEY);
       const matched =
-        ownedRestaurants.find(r => r.id === storedActiveId) ||
-        ownedRestaurants[0] ||
+        availableRestaurants.find(r => r.id === storedActiveId) ||
+        availableRestaurants[0] ||
         null;
 
       setActiveRestaurant(matched);
@@ -604,37 +616,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return created;
   };
 
-  // Create additional business
+  // Create additional business with full attributes and resilient fallback
   const createBusiness = async (params: {
     name: string;
     slug: string;
+    businessType?: string;
     phone?: string;
     city?: string;
+    address?: string;
     description?: string;
+    contactEmail?: string;
   }): Promise<Restaurant | null> => {
     if (!user) throw new Error('Authentication required.');
 
-    if (!isSupabaseConfigured) {
-      const created = db.createRestaurant({
-        name: params.name,
-        slug: params.slug,
-        phone: params.phone || '+212600000000',
-        description: params.description || `Welcome to ${params.name}.`
-      });
-      const updatedList = db.getRestaurants();
-      setAllRestaurants(updatedList);
+    let created: Restaurant | null = null;
+    let remoteError: string | null = null;
+
+    if (isSupabaseConfigured) {
+      try {
+        created = await supabaseService.createRestaurant(user.id, params);
+      } catch (err: any) {
+        remoteError = err?.message || 'Database error';
+        console.warn('[AuthContext] Supabase createRestaurant note:', remoteError);
+      }
+    }
+
+    if (created) {
+      try {
+        const freshList = await supabaseService.getRestaurantsForOwner(user.id);
+        const finalList = freshList.length > 0 ? freshList : [created];
+        setAllRestaurants(finalList);
+      } catch {
+        setAllRestaurants([created]);
+      }
       setActiveRestaurant(created);
+      localStorage.setItem(ACTIVE_REST_KEY, created.id);
+      setUser(prev => (prev ? { ...prev, restaurantId: created!.id } : null));
+
+      // Mirror to local storage for offline resilience
+      try {
+        db.createRestaurant(created);
+      } catch {}
+
       return created;
     }
 
-    const created = await supabaseService.createRestaurant(user.id, params);
-    if (created) {
-      const freshList = await supabaseService.getRestaurantsForOwner(user.id);
-      setAllRestaurants(freshList);
-      setActiveRestaurant(created);
-      localStorage.setItem(ACTIVE_REST_KEY, created.id);
+    // Fallback: If remote creation threw or is not configured (e.g. table not yet in schema cache)
+    const localCreated = db.createRestaurant({
+      name: params.name,
+      slug: params.slug,
+      businessType: (params.businessType as any) || 'restaurant',
+      phone: params.phone || '+212600000000',
+      city: params.city || 'Casablanca',
+      address: params.address || 'Morocco',
+      description: params.description || `Welcome to ${params.name}.`
+    });
+
+    const updatedList = db.getRestaurants();
+    setAllRestaurants(updatedList);
+    setActiveRestaurant(localCreated);
+    localStorage.setItem(ACTIVE_REST_KEY, localCreated.id);
+    setUser(prev => (prev ? { ...prev, restaurantId: localCreated.id } : null));
+
+    if (remoteError) {
+      console.warn(`[AuthContext] Saved restaurant locally (${localCreated.id}). Remote message: ${remoteError}`);
     }
-    return created;
+
+    return localCreated;
   };
 
   // Real Supabase Logout

@@ -178,11 +178,15 @@ export interface Restaurant {
   id: string;
   name: string;
   slug: string;
+  businessType?: string;
   description: string;
   address: string;
   city: string;
   country: string;
   phone: string;
+  contactEmail?: string;
+  ownerId?: string;
+  currency?: string;
   logoUrl: string;
   coverImageUrl: string;
   settings: RestaurantSettings;

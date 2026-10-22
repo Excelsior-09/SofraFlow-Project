@@ -376,4 +376,175 @@ describe('Production Authentication, MFA, Tenant Security & Order Integrity', ()
       expect(validOrders.length).toBe(0);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // TEST GROUP G: Setup Assistant Persistence, Slug Deduplication & Ownership
+  // -------------------------------------------------------------------------
+  describe('Group G: Setup Assistant Persistence & Ownership Verification', () => {
+    it('creates a complete restaurant entity preserving all rich metadata fields', () => {
+      const newRestaurant = db.createRestaurant({
+        name: 'Café & Restaurant Atlas',
+        slug: 'cafe-restaurant-atlas-1234',
+        businessType: 'cafe',
+        city: 'Marrakech',
+        address: '15 Boulevard Mohammed VI, Guéliz, Marrakech',
+        phone: '+212600112233',
+        description: 'Authentic Moroccan hospitality and specialty coffee.',
+        contactEmail: 'owner@atlascafe.ma',
+        ownerId: 'usr_owner_test_99'
+      });
+
+      expect(newRestaurant).toBeDefined();
+      expect(newRestaurant.id).toBeTruthy();
+      expect(newRestaurant.name).toBe('Café & Restaurant Atlas');
+      expect(newRestaurant.slug).toBe('cafe-restaurant-atlas-1234');
+      expect(newRestaurant.businessType).toBe('cafe');
+      expect(newRestaurant.city).toBe('Marrakech');
+      expect(newRestaurant.address).toBe('15 Boulevard Mohammed VI, Guéliz, Marrakech');
+      expect(newRestaurant.phone).toBe('+212600112233');
+      expect(newRestaurant.contactEmail).toBe('owner@atlascafe.ma');
+      expect(newRestaurant.ownerId).toBe('usr_owner_test_99');
+      expect(newRestaurant.currency).toBe('MAD');
+
+      // Verify immediate retrieval from database
+      const fetched = db.getRestaurantById(newRestaurant.id);
+      expect(fetched).toBeDefined();
+      expect(fetched?.name).toBe('Café & Restaurant Atlas');
+    });
+
+    it('sanitizes and safely normalizes French accents and symbols into clean slugs', () => {
+      const rawName = 'Le Délice de Casablanca — Café & Pâtisserie!';
+      const normalizedSlug = rawName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      expect(normalizedSlug).toBe('le-delice-de-casablanca-cafe-patisserie');
+      expect(normalizedSlug).not.toContain('é');
+      expect(normalizedSlug).not.toContain('—');
+      expect(normalizedSlug).not.toContain('!');
+    });
+
+    it('handles duplicate slug collisions safely by generating unique suffixes', () => {
+      const baseName = 'Riad Gourmet';
+      const baseSlug = 'riad-gourmet';
+
+      const rest1 = db.createRestaurant({
+        name: baseName,
+        slug: `${baseSlug}-1001`,
+        ownerId: 'usr_owner_1'
+      });
+
+      const rest2 = db.createRestaurant({
+        name: baseName,
+        slug: `${baseSlug}-1002`,
+        ownerId: 'usr_owner_2'
+      });
+
+      expect(rest1.slug).not.toBe(rest2.slug);
+      expect(rest1.id).not.toBe(rest2.id);
+
+      const all = db.getRestaurants();
+      expect(all.some(r => r.slug === `${baseSlug}-1001`)).toBe(true);
+      expect(all.some(r => r.slug === `${baseSlug}-1002`)).toBe(true);
+    });
+
+    it('ensures dashboard retrieves saved restaurant after simulated page refresh', () => {
+      const created = db.createRestaurant({
+        name: 'La Pergola Rabat',
+        slug: 'la-pergola-rabat',
+        city: 'Rabat',
+        ownerId: 'usr_rabat_owner'
+      });
+
+      // Simulate writing active restaurant id to localStorage
+      localStorage.setItem('sofraflow_active_restaurant_id', created.id);
+
+      // Hydration check
+      const storedId = localStorage.getItem('sofraflow_active_restaurant_id');
+      expect(storedId).toBe(created.id);
+
+      const hydrated = db.getRestaurantById(storedId!);
+      expect(hydrated).toBeDefined();
+      expect(hydrated?.name).toBe('La Pergola Rabat');
+      expect(hydrated?.city).toBe('Rabat');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // TEST GROUP H: Multi-Tenant Data Isolation Across Modules
+  // -------------------------------------------------------------------------
+  describe('Group H: Multi-Tenant Data Isolation Across Modules', () => {
+    it('isolates menus and products between different restaurants', () => {
+      const restA = db.createRestaurant({ name: 'Biz A', slug: 'biz-a', ownerId: 'usr_a' });
+      const restB = db.createRestaurant({ name: 'Biz B', slug: 'biz-b', ownerId: 'usr_b' });
+
+      // Create product for Biz A
+      const prodA = db.createProduct({
+        restaurantId: restA.id,
+        categoryId: 'cat_1',
+        name: { fr: 'Tajine A', en: 'Tagine A', ar: 'طاجين أ' },
+        description: { fr: 'Desc A', en: 'Desc A', ar: '' },
+        price: 85,
+        currency: 'MAD',
+        imageUrl: 'https://example.com/a.jpg',
+        isAvailable: true,
+        dietaryTags: ['halal'],
+        verifiedIngredients: ['agneau'],
+        verifiedAllergens: [],
+        optionGroups: [],
+        sortOrder: 1
+      });
+
+      // Biz A should see prodA, Biz B should NOT see prodA
+      const bizAProducts = db.getProducts(restA.id);
+      const bizBProducts = db.getProducts(restB.id);
+
+      expect(bizAProducts.some(p => p.id === prodA.id)).toBe(true);
+      expect(bizBProducts.some(p => p.id === prodA.id)).toBe(false);
+    });
+
+    it('isolates orders between different restaurants', () => {
+      const restA = db.createRestaurant({ name: 'Resto Alpha', slug: 'resto-alpha', ownerId: 'usr_alpha' });
+      const restB = db.createRestaurant({ name: 'Resto Beta', slug: 'resto-beta', ownerId: 'usr_beta' });
+
+      const orderA = db.createOrder({
+        id: 'ord_test_alpha_01',
+        publicOrderReference: 'SF-9911',
+        restaurantId: restA.id,
+        orderType: 'dine_in',
+        tableNumber: 'T1',
+        customerName: 'Karim',
+        items: [
+          {
+            productId: 'p_1',
+            productName: { fr: 'Thé', en: 'Tea', ar: 'شاي' },
+            quantity: 2,
+            unitPrice: 15,
+            subtotal: 30,
+            selectedOptions: []
+          }
+        ],
+        subtotal: 30,
+        taxAmount: 3,
+        serviceFeeAmount: 0,
+        total: 33,
+        status: 'new',
+        notificationStatus: 'pending',
+        statusHistory: [],
+        currency: 'MAD',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      const ordersA = db.getOrders(restA.id);
+      const ordersB = db.getOrders(restB.id);
+
+      expect(ordersA.some(o => o.id === orderA.id)).toBe(true);
+      expect(ordersB.some(o => o.id === orderA.id)).toBe(false);
+    });
+  });
 });

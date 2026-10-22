@@ -630,16 +630,20 @@ class DatabaseService {
 
   public createRestaurant(data: Partial<Restaurant> & { name: string; slug: string }): Restaurant {
     const restaurants = this.getRestaurants();
-    const id = `rest_${Date.now()}`;
+    const id = data.id || `rest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const newRest: Restaurant = {
       id,
       name: data.name,
       slug: data.slug,
+      businessType: data.businessType || 'restaurant',
       description: data.description || 'Welcome to our restaurant menu.',
       address: data.address || '',
       city: data.city || 'Casablanca',
       country: data.country || 'Morocco',
       phone: data.phone || '+212',
+      contactEmail: data.contactEmail,
+      ownerId: data.ownerId,
+      currency: data.currency || 'MAD',
       logoUrl: data.logoUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&auto=format&fit=crop&q=80',
       coverImageUrl: data.coverImageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&auto=format&fit=crop&q=80',
       settings: {

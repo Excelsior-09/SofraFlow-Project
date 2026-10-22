@@ -133,7 +133,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               ))}
               <div className="pt-2 mt-2 border-t border-border-subtle dark:border-[#233831]">
                 <Link
-                  to="/signup"
+                  to="/onboarding"
                   onClick={() => setRestaurantDropdownOpen(false)}
                   className="w-full p-2 rounded-xl text-xs font-semibold text-forest dark:text-gold hover:bg-forest-light dark:hover:bg-[#1B2F29] flex items-center gap-2"
                 >
