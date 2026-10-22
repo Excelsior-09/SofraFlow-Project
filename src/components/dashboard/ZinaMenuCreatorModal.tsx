@@ -458,12 +458,12 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
                     </h4>
                     <p className="text-xs text-ink-secondary dark:text-[#97A7A0] leading-relaxed">
                       {isEn
-                        ? 'Choose from 6 professionally designed Moroccan hospitality concepts and customize them.'
-                        : 'Choisissez parmi 6 modèles professionnels adaptés aux concepts de restauration au Maroc.'}
+                        ? 'Choose from 10 professionally designed restaurant, café, and hospitality concepts and customize them.'
+                        : 'Choisissez parmi 10 modèles professionnels adaptés aux concepts de restauration au Maroc.'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#EA580C] pt-2">
-                    <span>{isEn ? 'Browse 6 templates' : 'Voir les 6 modèles'}</span>
+                    <span>{isEn ? 'Browse 10 templates' : 'Voir les 10 modèles'}</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>

@@ -107,17 +107,6 @@ export const MenusPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <Link to="/app/templates">
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<LayoutTemplate className="w-4 h-4" />}
-                className="text-xs"
-              >
-                {isEn ? 'Browse 10 Templates' : '10 Modèles de Menus'}
-              </Button>
-            </Link>
-
             <Button
               variant="outline"
               size="sm"

@@ -137,16 +137,16 @@ describe('SofraFlow 10 Menu Templates Integration Test Suite', () => {
     });
   });
 
-  it('Dashboard routing contains /app/templates and navigation layout has Menu Templates link', () => {
-    const appTsxPath = path.join(rootDir, 'App.tsx');
-    const appContent = fs.readFileSync(appTsxPath, 'utf-8');
-    expect(appContent).toContain('/app/templates');
-    expect(appContent).toContain('TemplatesPage');
+  it('ZinaMenuCreatorModal contains Start with a Template with 10 templates, and sidebar remains clean', () => {
+    const modalPath = path.join(rootDir, 'components', 'dashboard', 'ZinaMenuCreatorModal.tsx');
+    const modalContent = fs.readFileSync(modalPath, 'utf-8');
+    expect(modalContent).toContain('Start with a Template');
+    expect(modalContent).toContain('10 Professional Templates');
+    expect(modalContent).toContain('SofraFlowTemplateRenderer');
 
     const layoutPath = path.join(rootDir, 'components', 'dashboard', 'DashboardLayout.tsx');
     const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
-    expect(layoutContent).toContain('/app/templates');
-    expect(layoutContent).toContain('LayoutTemplate');
+    expect(layoutContent).not.toContain('/app/templates');
   });
 
   it('SofraFlowTemplateRenderer component exists with search, cart, and event hooks', () => {

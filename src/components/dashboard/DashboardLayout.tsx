@@ -45,7 +45,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     { name: t('navigation.overview'), href: '/app/overview', icon: LayoutDashboard },
     { name: t('navigation.liveOrders'), href: '/app/orders', icon: ShoppingBag, badge: newOrdersCount > 0 ? newOrdersCount : undefined },
     { name: t('navigation.digitalMenus'), href: '/app/menus', icon: BookOpen },
-    { name: isEn ? 'Menu Templates' : 'Modèles de Menus', href: '/app/templates', icon: LayoutTemplate },
     { name: t('navigation.productsAndDishes'), href: '/app/products', icon: UtensilsCrossed },
     { name: t('navigation.qrNfcStudio'), href: '/app/qr-nfc', icon: QrCode },
     { name: t('navigation.languages'), href: '/app/languages', icon: Globe },
@@ -57,8 +56,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   ];
 
   const isActive = (path: string) => {
-    if (path === '/app/menus' && location.pathname === '/app/menus') return true;
-    if (path === '/app/templates' && location.pathname.startsWith('/app/templates')) return true;
+    if (path === '/app/menus' && location.pathname.startsWith('/app/menus')) return true;
     if (path === '/app/orders' && location.pathname.startsWith('/app/orders')) return true;
     return location.pathname === path;
   };
