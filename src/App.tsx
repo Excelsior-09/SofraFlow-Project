@@ -24,6 +24,7 @@ import { BlogArticlePage } from './pages/marketing/BlogArticlePage';
 import { OverviewPage } from './pages/dashboard/OverviewPage';
 import { MenusPage } from './pages/dashboard/MenusPage';
 import { MenuDetailPage } from './pages/dashboard/MenuDetailPage';
+import { TemplatesPage } from './pages/dashboard/TemplatesPage';
 import { ProductsPage } from './pages/dashboard/ProductsPage';
 import { OrdersPage } from './pages/dashboard/OrdersPage';
 import { OrderDetailPage } from './pages/dashboard/OrderDetailPage';
@@ -72,6 +73,7 @@ export function App() {
                 <Route path="/app/overview" element={<OverviewPage />} />
                 <Route path="/app/menus" element={<MenusPage />} />
                 <Route path="/app/menus/:menuId" element={<MenuDetailPage />} />
+                <Route path="/app/templates" element={<TemplatesPage />} />
                 <Route path="/app/products" element={<ProductsPage />} />
                 <Route path="/app/orders" element={<OrdersPage />} />
                 <Route path="/app/orders/:orderId" element={<OrderDetailPage />} />

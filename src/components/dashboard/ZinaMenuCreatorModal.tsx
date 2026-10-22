@@ -29,6 +29,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
 import { MENU_TEMPLATES, MenuTemplateDefinition, TemplateCategory, TemplateDishItem } from '../../data/menuTemplatesData';
 import { FoodLanguageCode } from '../../types';
+import { SofraFlowTemplateRenderer } from '../customer/SofraFlowTemplateRenderer';
 
 interface ZinaMenuCreatorModalProps {
   isOpen: boolean;
@@ -936,7 +937,7 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
                   <span>{isEn ? 'Back to methods' : 'Retour aux méthodes'}</span>
                 </button>
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  {isEn ? '6 Professional Templates' : '6 Modèles Professionnels'}
+                  {isEn ? '10 Professional Templates' : '10 Modèles Professionnels'}
                 </span>
               </div>
 
@@ -1213,60 +1214,25 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
               </div>
 
               {/* Preview Body */}
-              <div className="p-6 overflow-y-auto flex-1 bg-ivory/50 dark:bg-[#0E1A16] flex justify-center">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 dark:bg-[#0E1A16] flex justify-center items-start">
                 <div
-                  className={`transition-all duration-300 bg-white dark:bg-[#14241F] rounded-3xl p-5 border border-border-subtle dark:border-[#233831] shadow-lg ${
-                    previewDevice === 'mobile' ? 'w-full max-w-sm' : 'w-full max-w-2xl'
+                  className={`transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl ${
+                    previewDevice === 'mobile'
+                      ? 'w-full max-w-[390px] border-8 border-slate-900 rounded-[44px]'
+                      : 'w-full max-w-2xl border border-black/10'
                   }`}
                 >
-                  {/* Restaurant Header in Preview */}
-                  <div className="text-center pb-4 border-b border-border-subtle dark:border-[#233831]">
-                    <h4 className="text-base font-extrabold text-forest dark:text-[#F0F4F2]">
-                      {activeRestaurant.name}
-                    </h4>
-                    <p className="text-[11px] text-ink-secondary dark:text-[#97A7A0]">
-                      {previewTemplate.name[language] || previewTemplate.name.fr} • Menu
-                    </p>
-                  </div>
-
-                  {/* Sample Categories */}
-                  <div className="pt-4 space-y-5">
-                    {previewTemplate.categories.map((cat, cIdx) => (
-                      <div key={cIdx} className="space-y-3">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#EA580C]">
-                          {cat.name[language] || cat.name.fr}
-                        </span>
-
-                        <div className="space-y-2.5">
-                          {cat.items.map((it, itIdx) => (
-                            <div
-                              key={itIdx}
-                              className="p-3 rounded-xl bg-ivory/40 dark:bg-[#182C25] border border-border-subtle/80 dark:border-[#233831] flex items-center justify-between gap-3"
-                            >
-                              {it.imageUrl && previewDevice === 'desktop' && (
-                                <img
-                                  src={it.imageUrl}
-                                  alt={it.name[language] || it.name.fr}
-                                  className="w-12 h-12 object-cover rounded-lg shrink-0"
-                                />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-forest dark:text-[#F0F4F2] truncate">
-                                  {it.name[language] || it.name.fr}
-                                </p>
-                                <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] line-clamp-1">
-                                  {it.description[language] || it.description.fr}
-                                </p>
-                              </div>
-                              <span className="text-xs font-extrabold text-[#EA580C] shrink-0">
-                                {it.price} MAD
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <SofraFlowTemplateRenderer
+                    template={previewTemplate}
+                    restaurant={activeRestaurant}
+                    locale={language as FoodLanguageCode}
+                    previewMode={true}
+                    onTemplateSelect={() => {
+                      const chosen = previewTemplate;
+                      setPreviewTemplate(null);
+                      handleSelectTemplate(chosen);
+                    }}
+                  />
                 </div>
               </div>
 

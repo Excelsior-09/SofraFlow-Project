@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Copy, ExternalLink, Sparkles, ArrowRight } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Sparkles, ArrowRight, LayoutTemplate } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -107,6 +107,17 @@ export const MenusPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <Link to="/app/templates">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<LayoutTemplate className="w-4 h-4" />}
+                className="text-xs"
+              >
+                {isEn ? 'Browse 10 Templates' : '10 Modèles de Menus'}
+              </Button>
+            </Link>
+
             <Button
               variant="outline"
               size="sm"

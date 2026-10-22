@@ -3,16 +3,20 @@ import { MENU_TEMPLATES } from '../data/menuTemplatesData';
 import { db } from '../services/db';
 
 describe('Zina AI Menu Creator & Smart QR Studio Suite', () => {
-  it('provides exactly six distinct menu templates with realistic Moroccan restaurant data', () => {
-    expect(MENU_TEMPLATES).toHaveLength(6);
+  it('provides distinct menu templates with realistic Moroccan restaurant data', () => {
+    expect(MENU_TEMPLATES.length).toBeGreaterThanOrEqual(10);
 
     const expectedTemplateIds = [
-      'template_modern_restaurant',
+      'template_modern_fine_dining',
       'template_moroccan_heritage',
-      'template_cafe_coffee',
-      'template_fast_food_snack',
-      'template_minimal_luxury',
-      'template_bakery_patisserie'
+      'template_specialty_coffee',
+      'template_burger_fast_food',
+      'template_italian_pizzeria',
+      'template_asian_sushi_wok',
+      'template_seafood_mediterranean',
+      'template_bakery_patisserie',
+      'template_fresh_juice_healthy_eats',
+      'template_premium_lounge_bistro'
     ];
 
     MENU_TEMPLATES.forEach((tpl) => {
@@ -43,7 +47,7 @@ describe('Zina AI Menu Creator & Smart QR Studio Suite', () => {
   it('guarantees each template has distinct styling and business suitability', () => {
     const ids = MENU_TEMPLATES.map((t) => t.id);
     const uniqueIds = new Set(ids);
-    expect(uniqueIds.size).toBe(6);
+    expect(uniqueIds.size).toBe(10);
 
     const colors = MENU_TEMPLATES.map((t) => t.primaryColor);
     const uniqueColors = new Set(colors);

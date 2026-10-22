@@ -1,0 +1,15 @@
+:root {
+  --primary: #B45309;
+  --accent: #D97706;
+  --hero: url("https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=1400&auto=format&fit=crop&q=82");
+}
+.menu-hero {
+  border-bottom: 7px solid var(--accent);
+}
+.menu-hero h1 {
+  font-family: Palatino, "Book Antiqua", serif;
+  font-weight: 800;
+}
+.item {
+  border-radius: var(--radius);
+}

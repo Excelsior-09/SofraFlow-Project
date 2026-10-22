@@ -1,0 +1,15 @@
+:root {
+  --primary: #0F2C59;
+  --accent: #D4AF37;
+  --hero: url("https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=1400&auto=format&fit=crop&q=82");
+}
+.menu-hero {
+  border-bottom: 7px solid var(--accent);
+}
+.menu-hero h1 {
+  font-family: Georgia, serif;
+  font-weight: 800;
+}
+.item {
+  border-radius: var(--radius);
+}
