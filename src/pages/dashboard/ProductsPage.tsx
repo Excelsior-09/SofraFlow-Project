@@ -39,13 +39,28 @@ export const ProductsPage: React.FC = () => {
   const [ingredientsStr, setIngredientsStr] = useState('');
   const [allergensStr, setAllergensStr] = useState('');
 
-  const loadData = () => {
-    if (activeRestaurant) {
-      setProducts(db.getProducts(activeRestaurant.id));
-      setCategories(db.getCategories(activeRestaurant.id));
-    } else {
+  const loadData = async () => {
+    if (!activeRestaurant) {
       setProducts([]);
       setCategories([]);
+      return;
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const [supaProds, supaCats] = await Promise.all([
+          supabaseService.getProductsForRestaurant(activeRestaurant.id),
+          supabaseService.getCategoriesForRestaurant(activeRestaurant.id)
+        ]);
+        setProducts(supaProds);
+        setCategories(supaCats);
+      } catch (e) {
+        console.warn('[ProductsPage] Error fetching remote products/categories:', e);
+        setProducts([]);
+        setCategories([]);
+      }
+    } else {
+      setProducts(db.getProducts(activeRestaurant.id));
+      setCategories(db.getCategories(activeRestaurant.id));
     }
   };
 
@@ -109,7 +124,7 @@ export const ProductsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameFr.trim() && !nameEn.trim()) return;
 
@@ -138,15 +153,19 @@ export const ProductsPage: React.FC = () => {
       });
 
       if (isSupabaseConfigured) {
-        supabaseService.updateProduct(editingProduct.id, {
-          category_id: categoryId || categories[0]?.id || undefined,
-          name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
-          description: { fr: descFr, en: descEn, ar: descAr },
-          price: Number(price),
-          image_url: imageUrl.trim() || undefined,
-          is_available: isAvailable,
-          dietary_tags: dietaryTags
-        }).catch(err => console.warn('[ProductsPage] Supabase updateProduct error:', err));
+        try {
+          await supabaseService.updateProduct(editingProduct.id, {
+            category_id: categoryId || categories[0]?.id || undefined,
+            name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
+            description: { fr: descFr, en: descEn, ar: descAr },
+            price: Number(price),
+            image_url: imageUrl.trim() || undefined,
+            is_available: isAvailable,
+            dietary_tags: dietaryTags
+          });
+        } catch (err) {
+          console.warn('[ProductsPage] Supabase updateProduct error:', err);
+        }
       }
     } else {
       const created = db.createProduct({
@@ -166,24 +185,29 @@ export const ProductsPage: React.FC = () => {
       });
 
       if (isSupabaseConfigured) {
-        supabaseService.createProduct(activeRestaurant.id, {
-          category_id: categoryId || categories[0]?.id || 'cat_default',
-          name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
-          description: { fr: descFr, en: descEn, ar: descAr },
-          price: Number(price),
-          currency: activeRestaurant?.settings?.currency || 'MAD',
-          image_url: imageUrl.trim() || 'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600&auto=format&fit=crop&q=80',
-          is_available: isAvailable,
-          dietary_tags: dietaryTags,
-          sort_order: products.length + 1
-        }).catch(err => console.warn('[ProductsPage] Supabase createProduct error:', err));
+        try {
+          await supabaseService.createProduct(activeRestaurant.id, {
+            category_id: categoryId || categories[0]?.id || 'cat_default',
+            name: { fr: nameFr || nameEn, en: nameEn || nameFr, ar: nameAr },
+            description: { fr: descFr, en: descEn, ar: descAr },
+            price: Number(price),
+            currency: activeRestaurant?.settings?.currency || 'MAD',
+            image_url: imageUrl.trim() || 'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600&auto=format&fit=crop&q=80',
+            is_available: isAvailable,
+            dietary_tags: dietaryTags,
+            sort_order: products.length + 1
+          });
+        } catch (err) {
+          console.warn('[ProductsPage] Supabase createProduct error:', err);
+        }
       }
     }
 
     setIsModalOpen(false);
+    await loadData();
   };
 
-  const handleToggleAvailability = (product: Product) => {
+  const handleToggleAvailability = async (product: Product) => {
     const nextVal = !product.isAvailable;
     db.updateProduct({
       ...product,
@@ -191,21 +215,29 @@ export const ProductsPage: React.FC = () => {
     });
 
     if (isSupabaseConfigured) {
-      supabaseService.updateProduct(product.id, {
-        is_available: nextVal
-      }).catch(err => console.warn('[ProductsPage] Supabase updateProduct error:', err));
+      try {
+        await supabaseService.updateProduct(product.id, {
+          is_available: nextVal
+        });
+      } catch (err) {
+        console.warn('[ProductsPage] Supabase updateProduct error:', err);
+      }
     }
+    await loadData();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Voulez-vous vraiment supprimer ce plat du catalogue ?')) {
       db.deleteProduct(id, activeRestaurant.id);
 
       if (isSupabaseConfigured) {
-        supabaseService.deleteProduct(id).catch(err =>
-          console.warn('[ProductsPage] Supabase deleteProduct error:', err)
-        );
+        try {
+          await supabaseService.deleteProduct(id);
+        } catch (err) {
+          console.warn('[ProductsPage] Supabase deleteProduct error:', err);
+        }
       }
+      await loadData();
     }
   };
 

@@ -11,7 +11,7 @@ import { useLanguage } from '../../context/LanguageContext';
 export const MarketingNav: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { language } = useLanguage();
 
   const isEn = language === 'en';
@@ -86,7 +86,9 @@ export const MarketingNav: React.FC = () => {
           <ThemeSwitcher compact={true} />
           <LanguageSelector variant="compact" />
 
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="w-28 h-9 rounded-xl bg-neutral-200/50 dark:bg-neutral-800/50 animate-pulse" />
+          ) : isAuthenticated ? (
             <Link to="/app/overview">
               <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
                 {isEn ? 'Dashboard' : 'Tableau de bord'}
@@ -150,7 +152,9 @@ export const MarketingNav: React.FC = () => {
           </div>
 
           <div className="pt-3 border-t border-border-subtle dark:border-dark-border flex flex-col gap-2.5">
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="w-full h-10 rounded-xl bg-neutral-200/50 dark:bg-neutral-800/50 animate-pulse" />
+            ) : isAuthenticated ? (
               <Link to="/app/overview" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="primary" size="md" className="w-full">
                   {isEn ? 'Dashboard' : 'Tableau de bord'}

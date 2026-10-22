@@ -16,6 +16,7 @@ import { Card } from '../../components/common/Card';
 import { Badge, OrderStatusBadge, WhatsAppStatusBadge } from '../../components/common/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
 import { Order, Restaurant } from '../../types';
 import { SEO } from '../../components/common/SEO';
 
@@ -26,8 +27,22 @@ export const OrderConfirmationPage: React.FC = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const loadOrder = () => {
+  const loadOrder = async () => {
     if (!publicOrderReference) return;
+    try {
+      const supaOrder = await supabaseService.getOrderByReference(publicOrderReference);
+      if (supaOrder) {
+        setOrder(supaOrder);
+        const rest = await supabaseService.getRestaurantById(supaOrder.restaurantId);
+        if (rest) {
+          setRestaurant(rest);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[OrderConfirmationPage] Supabase load error:', err);
+    }
+
     const found = db.getOrderByPublicReference(publicOrderReference);
     if (found) {
       setOrder(found);

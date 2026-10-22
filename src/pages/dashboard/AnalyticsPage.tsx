@@ -19,6 +19,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Order, NotificationEvent } from '../../types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -28,13 +30,27 @@ export const AnalyticsPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [events, setEvents] = useState<NotificationEvent[]>([]);
 
-  const loadData = () => {
-    if (activeRestaurant) {
-      setOrders(db.getOrders(activeRestaurant.id));
-      setEvents(db.getNotificationEvents(activeRestaurant.id));
-    } else {
+  const loadData = async () => {
+    if (!activeRestaurant) {
       setOrders([]);
       setEvents([]);
+      return;
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const supaOrders = await supabaseService.getOrdersForRestaurant(activeRestaurant.id);
+        setOrders(supaOrders);
+        const supaEvents = await supabaseService.getNotificationEvents(activeRestaurant.id);
+        setEvents(supaEvents);
+      } catch (err) {
+        console.warn('[AnalyticsPage] Error fetching remote analytics data:', err);
+        setOrders([]);
+        setEvents([]);
+      }
+    } else {
+      setOrders(db.getOrders(activeRestaurant.id));
+      setEvents(db.getNotificationEvents(activeRestaurant.id));
     }
   };
 

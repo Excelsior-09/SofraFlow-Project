@@ -35,13 +35,10 @@ export const OrdersPage: React.FC = () => {
     if (isSupabaseConfigured) {
       try {
         const supaOrders = await supabaseService.getOrdersForRestaurant(activeRestaurant.id);
-        if (supaOrders.length > 0) {
-          setOrders(supaOrders);
-        } else {
-          setOrders(db.getOrders(activeRestaurant.id));
-        }
+        setOrders(supaOrders);
       } catch (err) {
-        setOrders(db.getOrders(activeRestaurant.id));
+        console.warn('[OrdersPage] Supabase getOrders warning:', err);
+        setOrders([]);
       }
     } else {
       setOrders(db.getOrders(activeRestaurant.id));

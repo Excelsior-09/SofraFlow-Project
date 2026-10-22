@@ -148,10 +148,9 @@ export const BillingPage: React.FC = () => {
   const [paymentRequests, setPaymentRequests] = useState<SubscriptionPaymentRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
-  // Admin verification section state
-  const isAdminUser = user?.role === 'admin' || user?.email === 'admin@sofraflow.com';
-  const [adminSimulationMode, setAdminSimulationMode] = useState(false);
-  const showAdminSection = isAdminUser || adminSimulationMode;
+  // Admin verification section state — restricted to authenticated platform administrators
+  const isAdminUser = Boolean(user?.role === 'admin' || user?.email === 'admin@sofraflow.com');
+  const showAdminSection = isAdminUser;
   const [allAdminRequests, setAllAdminRequests] = useState<SubscriptionPaymentRequest[]>([]);
   const [adminFilter, setAdminFilter] = useState<'all' | 'under_review' | 'approved' | 'rejected'>('all');
   const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
@@ -447,19 +446,6 @@ export const BillingPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-ink-secondary dark:text-dark-secondary mt-1">
               Gérez votre formule SOFRAFLOW et effectuez vos règlements via virement bancaire ou services de transfert au Maroc.
             </p>
-          </div>
-
-          {/* Quick Demo Switcher for Admin verification testing */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button
-              variant={adminSimulationMode ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setAdminSimulationMode(!adminSimulationMode)}
-              className="text-xs flex items-center gap-1.5"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              {adminSimulationMode ? "Quitter le mode Admin" : "Tester en mode Admin"}
-            </Button>
           </div>
         </div>
 

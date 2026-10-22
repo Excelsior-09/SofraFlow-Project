@@ -30,8 +30,28 @@ export const MenuDetailPage: React.FC = () => {
   const [catNameFr, setCatNameFr] = useState('');
   const [catNameAr, setCatNameAr] = useState('');
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!activeRestaurant || !menuId) return;
+
+    if (isSupabaseConfigured) {
+      try {
+        const [supaMenus, supaCats, supaProds] = await Promise.all([
+          supabaseService.getMenusForRestaurant(activeRestaurant.id),
+          supabaseService.getCategoriesForRestaurant(activeRestaurant.id),
+          supabaseService.getProductsForRestaurant(activeRestaurant.id)
+        ]);
+        const supaFound = supaMenus.find(m => m.id === menuId);
+        if (supaFound) {
+          setMenu(supaFound);
+          setCategories(supaCats);
+          setProducts(supaProds);
+          return;
+        }
+      } catch (err) {
+        console.warn('[MenuDetailPage] Supabase loadData error:', err);
+      }
+    }
+
     const found = db.getMenuById(menuId, activeRestaurant.id);
     if (!found) {
       return;
@@ -127,9 +147,16 @@ export const MenuDetailPage: React.FC = () => {
     setIsCategoryModalOpen(false);
   };
 
-  const handleDeleteCategory = (catId: string) => {
+  const handleDeleteCategory = async (catId: string) => {
     if (confirm('Voulez-vous supprimer cette catégorie ? Les plats resteront dans votre catalogue.')) {
       db.deleteCategory(catId, activeRestaurant.id);
+      if (isSupabaseConfigured) {
+        try {
+          await supabaseService.deleteCategory(catId);
+        } catch (e) {
+          console.warn('[MenuDetailPage] Supabase deleteCategory error:', e);
+        }
+      }
     }
   };
 

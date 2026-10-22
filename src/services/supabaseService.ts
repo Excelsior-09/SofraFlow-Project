@@ -9,7 +9,8 @@ import {
   LocalizedString,
   SubscriptionPaymentRequest,
   PaymentVerificationStatus,
-  MoroccanPaymentMethod
+  MoroccanPaymentMethod,
+  NotificationEvent
 } from '../types';
 
 export interface UserProfile {
@@ -106,6 +107,28 @@ export const supabaseService = {
     if (!data) return null;
 
     return supabaseService.mapRestaurantRow(data);
+  },
+
+  async getRestaurantById(id: string): Promise<Restaurant | null> {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[Supabase] Error fetching restaurant by id:', error.message);
+        return null;
+      }
+      if (!data) return null;
+
+      return supabaseService.mapRestaurantRow(data);
+    } catch (err) {
+      console.warn('[Supabase] getRestaurantById exception:', err);
+      return null;
+    }
   },
 
   async createRestaurant(
@@ -459,6 +482,20 @@ export const supabaseService = {
     };
   },
 
+  async deleteCategory(categoryId: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
+    const { error } = await supabase
+      .from('menu_categories')
+      .delete()
+      .eq('id', categoryId);
+
+    if (error) {
+      console.error('[Supabase] Error deleting category:', error.message);
+      return false;
+    }
+    return true;
+  },
+
   async getProductsForRestaurant(restaurantId: string): Promise<Product[]> {
     if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase
@@ -806,6 +843,168 @@ export const supabaseService = {
       return false;
     }
     return true;
+  },
+
+  async getOrderById(orderId: string): Promise<Order | null> {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        publicOrderReference: data.public_order_reference,
+        restaurantId: data.restaurant_id,
+        orderType: data.order_type,
+        tableNumber: data.table_number,
+        customerName: data.customer_name,
+        customerPhone: data.customer_phone,
+        customerNotes: data.customer_notes,
+        items: data.items || [],
+        currency: data.currency || 'MAD',
+        subtotal: Number(data.subtotal) || 0,
+        taxAmount: Number(data.tax_amount) || 0,
+        serviceFeeAmount: Number(data.service_fee_amount) || 0,
+        total: Number(data.total) || 0,
+        status: data.status,
+        notificationStatus: data.notification_status,
+        statusHistory: data.status_history || [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+    } catch (err) {
+      console.warn('[Supabase] getOrderById exception:', err);
+      return null;
+    }
+  },
+
+  async getOrderByReference(reference: string): Promise<Order | null> {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('public_order_reference', reference)
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        publicOrderReference: data.public_order_reference,
+        restaurantId: data.restaurant_id,
+        orderType: data.order_type,
+        tableNumber: data.table_number,
+        customerName: data.customer_name,
+        customerPhone: data.customer_phone,
+        customerNotes: data.customer_notes,
+        items: data.items || [],
+        currency: data.currency || 'MAD',
+        subtotal: Number(data.subtotal) || 0,
+        taxAmount: Number(data.tax_amount) || 0,
+        serviceFeeAmount: Number(data.service_fee_amount) || 0,
+        total: Number(data.total) || 0,
+        status: data.status,
+        notificationStatus: data.notification_status,
+        statusHistory: data.status_history || [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+    } catch (err) {
+      console.warn('[Supabase] getOrderByReference exception:', err);
+      return null;
+    }
+  },
+
+  async getNotificationEvents(restaurantId: string): Promise<NotificationEvent[]> {
+    if (!isSupabaseConfigured) return [];
+    try {
+      const { data, error } = await supabase
+        .from('notification_events')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('[Supabase] Error fetching notification events:', error.message);
+        return [];
+      }
+
+      return (data || []).map(e => ({
+        id: e.id,
+        orderId: e.order_id,
+        restaurantId: e.restaurant_id,
+        destinationPhoneNumber: e.destination_phone_number,
+        status: e.status,
+        provider: e.provider,
+        providerMessageId: e.provider_message_id,
+        attemptCount: e.attempt_count,
+        payloadSnapshot: e.payload_snapshot || {},
+        errorMessage: e.error_message,
+        createdAt: e.created_at,
+        updatedAt: e.updated_at
+      }));
+    } catch (err) {
+      console.warn('[Supabase] getNotificationEvents exception:', err);
+      return [];
+    }
+  },
+
+  async saveNotificationEvent(event: NotificationEvent): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
+    try {
+      const { error } = await supabase
+        .from('notification_events')
+        .upsert({
+          id: event.id,
+          order_id: event.orderId,
+          restaurant_id: event.restaurantId,
+          destination_phone_number: event.destinationPhoneNumber,
+          status: event.status,
+          provider: event.provider,
+          provider_message_id: event.providerMessageId || null,
+          attempt_count: event.attemptCount || 1,
+          payload_snapshot: event.payloadSnapshot || {},
+          error_message: event.errorMessage || null,
+          created_at: event.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.warn('[Supabase] Error saving notification event:', error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('[Supabase] saveNotificationEvent exception:', err);
+      return false;
+    }
+  },
+
+  async getBusinessSalesAnalytics(restaurantId: string): Promise<any | null> {
+    if (!isSupabaseConfigured) return null;
+    try {
+      // Try database RPC function first
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_business_sales_analytics', {
+        p_restaurant_id: restaurantId
+      });
+
+      if (!rpcError && rpcData) {
+        return rpcData;
+      }
+    } catch (rpcEx) {
+      console.warn('[Supabase] Analytics RPC exception:', rpcEx);
+    }
+    return null;
   },
 
   // ------------------------------------------------------------------

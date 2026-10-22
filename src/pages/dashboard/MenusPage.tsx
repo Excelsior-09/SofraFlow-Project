@@ -34,21 +34,14 @@ export const MenusPage: React.FC = () => {
     try {
       if (isSupabaseConfigured) {
         const supaMenus = await supabaseService.getMenusForRestaurant(activeRestaurant.id);
-        if (supaMenus.length > 0) {
-          setMenus(supaMenus);
-        } else {
-          // If no menus found on Supabase for this restaurant, check local db fallback
-          const localMenus = db.getMenus(activeRestaurant.id);
-          setMenus(localMenus);
-        }
+        setMenus(supaMenus);
       } else {
         setMenus(db.getMenus(activeRestaurant.id));
       }
     } catch (err: any) {
       console.error('[MenusPage] Failed to fetch menus:', err);
       setErrorMessage(err?.message || (isEn ? 'Failed to load menus' : 'Échec du chargement des menus'));
-      // Keep existing local menus if available
-      setMenus(db.getMenus(activeRestaurant.id));
+      setMenus([]);
     } finally {
       setIsLoading(false);
     }

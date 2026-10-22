@@ -23,6 +23,8 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { dispatchOrderNotification } from '../../services/whatsappService';
 import { Order, OrderStatus } from '../../types';
 
@@ -38,13 +40,23 @@ export const OrderDetailPage: React.FC = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const loadOrder = () => {
+  const loadOrder = async () => {
     if (!orderId) return;
-    const found = db.getOrderById(orderId);
-    if (!found) {
-      return;
+    if (isSupabaseConfigured) {
+      try {
+        const supaOrder = await supabaseService.getOrderById(orderId);
+        if (supaOrder) {
+          setOrder(supaOrder);
+          return;
+        }
+      } catch (err) {
+        console.warn('[OrderDetailPage] Error fetching order from Supabase:', err);
+      }
     }
-    setOrder(found);
+    const found = db.getOrderById(orderId);
+    if (found) {
+      setOrder(found);
+    }
   };
 
   useEffect(() => {
@@ -82,6 +94,12 @@ export const OrderDetailPage: React.FC = () => {
   const handleStatusChange = (nextStatus: OrderStatus, note?: string) => {
     const updated = db.updateOrderStatus(order.id, activeRestaurant.id, nextStatus, note);
     if (updated) setOrder(updated);
+
+    if (isSupabaseConfigured) {
+      supabaseService.updateOrderStatus(order.id, nextStatus, note).catch(e =>
+        console.warn('[OrderDetailPage] Error updating order status in Supabase:', e)
+      );
+    }
   };
 
   const handleCancelOrder = (e: React.FormEvent) => {

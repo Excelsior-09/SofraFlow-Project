@@ -63,13 +63,18 @@ export function calculateOrderTotals(input: OrderCalculationInput): CalculationR
       continue;
     }
 
+    if (matchedProduct.restaurantId && matchedProduct.restaurantId !== input.restaurantId) {
+      errors.push(`Product "${cartItem.name}" does not belong to this restaurant.`);
+      continue;
+    }
+
     if (!matchedProduct.isAvailable) {
       errors.push(`"${matchedProduct.name.en || matchedProduct.name.fr}" is currently sold out.`);
       continue;
     }
 
     if (cartItem.quantity <= 0 || !Number.isInteger(cartItem.quantity)) {
-      errors.push(`Invalid quantity for ${cartItem.name}.`);
+      errors.push(`Invalid quantity for ${cartItem.name}. Must be a positive integer.`);
       continue;
     }
 

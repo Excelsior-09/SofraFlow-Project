@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { calculateOrderTotals, generatePublicOrderReference } from '../services/orderCalculation';
 import { db } from '../services/db';
+import { supabaseService } from '../services/supabaseService';
 import { dispatchOrderNotification } from '../services/whatsappService';
 import { CartItem, Order, OrderType, Product, Restaurant } from '../types';
 
@@ -173,39 +174,54 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: now
       };
 
-      // Save order first (source of truth)
-      db.createOrder(newOrder);
+      let persistedOrder = newOrder;
+      try {
+        const supaOrder = await supabaseService.createOrder(newOrder);
+        if (supaOrder) {
+          persistedOrder = supaOrder;
+        }
+      } catch (err) {
+        console.warn('[CartContext] Supabase order creation fallback to local db:', err);
+      }
+
+      // Save order in db (source of truth / local cache)
+      db.createOrder(persistedOrder);
 
       // 3. Asynchronously trigger WhatsApp Notification
       // Note: If WhatsApp notification fails, order remains saved!
       try {
         const notifResult = await dispatchOrderNotification(
-          newOrder,
+          persistedOrder,
           restaurant.whatsappConfig,
           restaurant.name
         );
 
         // Save notification audit log
         db.saveNotificationEvent(notifResult.event);
+        try {
+          await supabaseService.saveNotificationEvent(notifResult.event);
+        } catch {
+          // ignore remote log failure
+        }
 
         // Update order notification status
         db.updateOrderNotificationStatus(
-          orderId,
+          persistedOrder.id,
           notifResult.event.status,
           notifResult.event.id
         );
-        newOrder.notificationStatus = notifResult.event.status;
-        newOrder.notificationEventId = notifResult.event.id;
+        persistedOrder.notificationStatus = notifResult.event.status;
+        persistedOrder.notificationEventId = notifResult.event.id;
       } catch (notifErr) {
         console.warn('WhatsApp dispatch warning:', notifErr);
-        db.updateOrderNotificationStatus(orderId, 'failed');
-        newOrder.notificationStatus = 'failed';
+        db.updateOrderNotificationStatus(persistedOrder.id, 'failed');
+        persistedOrder.notificationStatus = 'failed';
       }
 
       // 4. Clear cart on successful order creation
       clearCart();
       setIsSubmitting(false);
-      return newOrder;
+      return persistedOrder;
     } catch (err: any) {
       console.error('Order submission failed:', err);
       setSubmissionError(err.message || 'An unexpected error occurred while placing your order.');

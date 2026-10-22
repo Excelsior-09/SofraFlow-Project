@@ -37,8 +37,17 @@ export const WhatsAppPage: React.FC = () => {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const loadEvents = () => {
+  const loadEvents = async () => {
     if (activeRestaurant) {
+      try {
+        const supaEvents = await supabaseService.getNotificationEvents(activeRestaurant.id);
+        if (supaEvents && supaEvents.length > 0) {
+          setEvents(supaEvents);
+          return;
+        }
+      } catch (err) {
+        console.warn('[WhatsAppPage] Supabase getNotificationEvents error:', err);
+      }
       setEvents(db.getNotificationEvents(activeRestaurant.id));
     }
   };

@@ -10,6 +10,7 @@ import { Alert } from '../../components/common/Alert';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
 import { Menu, MenuCategory, Product, Restaurant } from '../../types';
 import { SEO } from '../../components/common/SEO';
 
@@ -35,24 +36,59 @@ export const PublicMenuPage: React.FC = () => {
 
   useEffect(() => {
     if (!restaurantSlug) return;
-    const foundRestaurant = db.getRestaurantBySlug(restaurantSlug);
-    if (foundRestaurant) {
-      setRestaurant(foundRestaurant);
-      const allMenus = db.getMenus(foundRestaurant.id);
-      const targetMenu = menuSlug
-        ? allMenus.find(m => m.slug === menuSlug && m.status === 'published')
-        : allMenus.find(m => m.isDefault && m.status === 'published') || allMenus[0];
+    let isMounted = true;
 
-      setMenu(targetMenu || null);
-      setCategories(db.getCategories(foundRestaurant.id));
-      setProducts(db.getProducts(foundRestaurant.id));
+    async function loadPublicData() {
+      try {
+        const foundRestaurant = await supabaseService.getRestaurantBySlug(restaurantSlug!);
+        if (foundRestaurant && isMounted) {
+          setRestaurant(foundRestaurant);
+          const [allMenus, cats, prods] = await Promise.all([
+            supabaseService.getMenusForRestaurant(foundRestaurant.id),
+            supabaseService.getCategoriesForRestaurant(foundRestaurant.id),
+            supabaseService.getProductsForRestaurant(foundRestaurant.id)
+          ]);
+          if (isMounted) {
+            const targetMenu = menuSlug
+              ? allMenus.find(m => m.slug === menuSlug && m.status === 'published')
+              : allMenus.find(m => m.isDefault && m.status === 'published') || allMenus[0];
+
+            setMenu(targetMenu || null);
+            setCategories(cats);
+            setProducts(prods);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[PublicMenuPage] Supabase load error, fallback to local db:', err);
+      }
+
+      // Fallback to local db
+      const localRest = db.getRestaurantBySlug(restaurantSlug!);
+      if (localRest && isMounted) {
+        setRestaurant(localRest);
+        const allMenus = db.getMenus(localRest.id);
+        const targetMenu = menuSlug
+          ? allMenus.find(m => m.slug === menuSlug && m.status === 'published')
+          : allMenus.find(m => m.isDefault && m.status === 'published') || allMenus[0];
+
+        setMenu(targetMenu || null);
+        setCategories(db.getCategories(localRest.id));
+        setProducts(db.getProducts(localRest.id));
+      }
     }
+
+    loadPublicData();
 
     // Sync table query parameter to cart
     if (tableParam) {
       setTableNumber(tableParam);
       setOrderType('dine_in');
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [restaurantSlug, menuSlug, tableParam]);
 
   if (!restaurant) {

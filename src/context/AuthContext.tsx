@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import QRCode from 'qrcode';
+import { supabase, isSupabaseConfigured, setRememberMePreference } from '../lib/supabase';
 import { supabaseService, UserProfile } from '../services/supabaseService';
 import { db } from '../services/db';
 import { Restaurant, User } from '../types';
+
+export interface MfaEnrollmentResult {
+  id: string;
+  qrCode: string;
+  secret: string;
+  uri: string;
+}
 
 export interface AuthContextType {
   user: User | null;
@@ -12,7 +20,16 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isDemoMode: boolean;
-  login: (email: string, password?: string) => Promise<boolean>;
+  mfaRequired: boolean;
+  mfaFactorId: string | null;
+  mfaFactors: any[];
+  mfaAssuranceLevel: 'aal1' | 'aal2' | null;
+  login: (email: string, password?: string, rememberMe?: boolean) => Promise<{ success: boolean; mfaRequired: boolean }>;
+  verifyMfaChallenge: (code: string) => Promise<boolean>;
+  enrollMfa: () => Promise<MfaEnrollmentResult>;
+  verifyMfaEnrollment: (factorId: string, code: string) => Promise<boolean>;
+  unenrollMfa: (factorId: string) => Promise<boolean>;
+  loadMfaStatus: () => Promise<void>;
   signup: (params: {
     restaurantName: string;
     slug: string;
@@ -52,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
+  // MFA State
+  const [mfaRequired, setMfaRequired] = useState<boolean>(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [mfaAssuranceLevel, setMfaAssuranceLevel] = useState<'aal1' | 'aal2' | null>(null);
+
   // Load real user data and restaurants from Supabase
   const loadUserData = useCallback(async (authUserId: string, authUserEmail: string, metaFullName?: string) => {
     try {
@@ -81,14 +104,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[Auth] getRestaurantsForOwner warning:', restErr);
       }
 
-      // Safe fallback if user has no remote restaurants yet or remote table is empty/unmigrated
-      if (ownedRestaurants.length === 0) {
-        const localRests = db.getRestaurants();
-        if (localRests.length > 0) {
-          ownedRestaurants = localRests;
-        }
-      }
-
       setAllRestaurants(ownedRestaurants);
 
       // 3. Determine active restaurant
@@ -101,6 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setActiveRestaurant(matched);
       if (matched) {
         localStorage.setItem(ACTIVE_REST_KEY, matched.id);
+      } else {
+        localStorage.removeItem(ACTIVE_REST_KEY);
       }
 
       // 4. Set unified user object
@@ -119,13 +136,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Check MFA status and factors for active session
+  const loadMfaStatus = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data: factorsData, error: factorsErr } = await supabase.auth.mfa.listFactors();
+      if (!factorsErr && factorsData) {
+        const verified = (factorsData.totp || []).filter(f => f.status === 'verified');
+        setMfaFactors(verified);
+      }
+
+      const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!aalErr && aalData) {
+        setMfaAssuranceLevel(aalData.currentLevel as 'aal1' | 'aal2');
+        if (aalData.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
+          setMfaRequired(true);
+        } else {
+          setMfaRequired(false);
+        }
+      }
+    } catch (err) {
+      console.warn('[Auth] MFA status check notice:', err);
+    }
+  }, []);
+
   // Initialize session on mount
   useEffect(() => {
     let mounted = true;
 
     async function initSession() {
       if (!isSupabaseConfigured) {
-        // Fallback for offline/test environments
         const mockUser = db.getCurrentUser();
         if (mockUser && mounted) {
           setUser(mockUser);
@@ -153,7 +193,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (session?.user && mounted) {
-          // Immediately set user to unblock routing and loading state
+          // Check MFA assurance level
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          const needsMfa = Boolean(aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2');
+
+          if (needsMfa) {
+            setMfaRequired(true);
+            const { data: factorsData } = await supabase.auth.mfa.listFactors();
+            const totpFactor = (factorsData?.totp || []).find(f => f.status === 'verified');
+            setMfaFactorId(totpFactor?.id || null);
+            setMfaAssuranceLevel('aal1');
+          } else {
+            setMfaRequired(false);
+            setMfaAssuranceLevel((aalData?.currentLevel as 'aal1' | 'aal2') || 'aal1');
+          }
+
+          // Set user object to unblock routing
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -164,17 +219,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           clearTimeout(timeoutId);
 
-          // Asynchronously load profile and restaurants in the background
-          await loadUserData(
-            session.user.id,
-            session.user.email || '',
-            session.user.user_metadata?.full_name
-          );
+          // Asynchronously load profile and restaurants in the background if MFA is satisfied
+          if (!needsMfa) {
+            await loadUserData(
+              session.user.id,
+              session.user.email || '',
+              session.user.user_metadata?.full_name
+            );
+            await loadMfaStatus();
+          }
         } else if (mounted) {
           setUser(null);
           setProfile(null);
           setActiveRestaurant(null);
           setAllRestaurants([]);
+          setMfaRequired(false);
+          setMfaFactorId(null);
+          setMfaFactors([]);
+          setMfaAssuranceLevel(null);
           setIsLoading(false);
           clearTimeout(timeoutId);
         }
@@ -203,7 +265,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }));
             setIsLoading(false);
 
-            // Decouple async DB queries with setTimeout to avoid Supabase auth lock deadlock
             setTimeout(() => {
               if (mounted) {
                 loadUserData(
@@ -211,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   session.user.email || '',
                   session.user.user_metadata?.full_name
                 ).catch(err => console.warn('[Auth] Background load error:', err));
+                loadMfaStatus().catch(() => {});
               }
             }, 0);
           }
@@ -219,6 +281,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(null);
           setActiveRestaurant(null);
           setAllRestaurants([]);
+          setMfaRequired(false);
+          setMfaFactorId(null);
+          setMfaFactors([]);
+          setMfaAssuranceLevel(null);
           setIsLoading(false);
           localStorage.removeItem(ACTIVE_REST_KEY);
         }
@@ -233,10 +299,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted = false;
     };
-  }, [loadUserData]);
+  }, [loadUserData, loadMfaStatus]);
 
-  // Real Supabase Login
-  const login = async (email: string, password?: string): Promise<boolean> => {
+  // Real Supabase Login with Remember Me & MFA check
+  const login = async (
+    email: string,
+    password?: string,
+    rememberMe?: boolean
+  ): Promise<{ success: boolean; mfaRequired: boolean }> => {
+    // 1. Configure Remember Me storage preference
+    setRememberMePreference(rememberMe ?? true);
+
     if (!isSupabaseConfigured) {
       // Local development test fallback
       const mockUser: User = {
@@ -251,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAllRestaurants(db.getRestaurants());
       setActiveRestaurant(db.getRestaurants()[0] || null);
       setIsDemoMode(true);
-      return true;
+      return { success: true, mfaRequired: false };
     }
 
     if (!password) {
@@ -269,15 +342,161 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (data.user) {
+      // Check if user has enrolled second factor (MFA/2FA)
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
+        const { data: factorsData } = await supabase.auth.mfa.listFactors();
+        const totpFactor = (factorsData?.totp || []).find(f => f.status === 'verified');
+
+        setMfaRequired(true);
+        setMfaFactorId(totpFactor?.id || null);
+        setMfaAssuranceLevel('aal1');
+        return { success: true, mfaRequired: true };
+      }
+
+      setMfaRequired(false);
+      setMfaFactorId(null);
+      setMfaAssuranceLevel('aal2');
+
       await loadUserData(
         data.user.id,
         data.user.email || '',
         data.user.user_metadata?.full_name
       );
+      await loadMfaStatus();
+      return { success: true, mfaRequired: false };
+    }
+
+    return { success: false, mfaRequired: false };
+  };
+
+  // Verify TOTP MFA Challenge during Sign-In
+  const verifyMfaChallenge = async (code: string): Promise<boolean> => {
+    if (!isSupabaseConfigured) {
+      setMfaRequired(false);
       return true;
     }
 
-    return false;
+    let factorId = mfaFactorId;
+    if (!factorId) {
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = (factorsData?.totp || []).find(f => f.status === 'verified');
+      factorId = totpFactor?.id || null;
+    }
+
+    if (!factorId) {
+      throw new Error('No enrolled TOTP factor found for this account.');
+    }
+
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId,
+      code: code.trim()
+    });
+
+    if (error) {
+      console.error('[Auth] MFA challenge verification failed:', error.message);
+      throw error;
+    }
+
+    setMfaRequired(false);
+    setMfaAssuranceLevel('aal2');
+
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    if (currentUser) {
+      await loadUserData(
+        currentUser.id,
+        currentUser.email || '',
+        currentUser.user_metadata?.full_name
+      );
+      await loadMfaStatus();
+    }
+    return true;
+  };
+
+  // Enroll new TOTP Factor
+  const enrollMfa = async (): Promise<MfaEnrollmentResult> => {
+    if (!isSupabaseConfigured) {
+      return {
+        id: 'mock_factor_id',
+        qrCode: '',
+        secret: 'MOCKSECRETJBSWY3DPEHPK3PXP',
+        uri: 'otpauth://totp/SOFRAFLOW:demo@sofraflow.com?secret=MOCKSECRETJBSWY3DPEHPK3PXP&issuer=SOFRAFLOW'
+      };
+    }
+
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'SOFRAFLOW'
+    });
+
+    if (error) {
+      console.error('[Auth] MFA enroll error:', error.message);
+      throw error;
+    }
+
+    let qrCodeDataUrl = data.totp.qr_code || '';
+    if (data.totp.uri) {
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(data.totp.uri, {
+          width: 250,
+          margin: 2,
+          color: {
+            dark: '#153E35',
+            light: '#FFFFFF'
+          }
+        });
+      } catch (qrErr) {
+        console.warn('[Auth] QR code toDataURL generation notice:', qrErr);
+      }
+    }
+
+    return {
+      id: data.id,
+      qrCode: qrCodeDataUrl,
+      secret: data.totp.secret,
+      uri: data.totp.uri
+    };
+  };
+
+  // Verify and activate newly enrolled factor
+  const verifyMfaEnrollment = async (factorId: string, code: string): Promise<boolean> => {
+    if (!isSupabaseConfigured) {
+      setMfaFactors([{ id: factorId, factor_type: 'totp', status: 'verified', friendly_name: 'Authenticator App' }]);
+      return true;
+    }
+
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId,
+      code: code.trim()
+    });
+
+    if (error) {
+      console.error('[Auth] Verify MFA enrollment error:', error.message);
+      throw error;
+    }
+
+    await loadMfaStatus();
+    return true;
+  };
+
+  // Unenroll TOTP Factor
+  const unenrollMfa = async (factorId: string): Promise<boolean> => {
+    if (!isSupabaseConfigured) {
+      setMfaFactors([]);
+      return true;
+    }
+
+    const { error } = await supabase.auth.mfa.unenroll({
+      factorId
+    });
+
+    if (error) {
+      console.error('[Auth] MFA unenroll error:', error.message);
+      throw error;
+    }
+
+    await loadMfaStatus();
+    return true;
   };
 
   // Real Supabase Sign-Up with Email & Password
@@ -356,7 +575,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newRest;
     }
 
-    // If password provided, register account first
     let currentAuthUser = (await supabase.auth.getUser()).data.user;
 
     if (!currentAuthUser && params.password) {
@@ -433,6 +651,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(null);
       setActiveRestaurant(null);
       setAllRestaurants([]);
+      setMfaRequired(false);
+      setMfaFactorId(null);
+      setMfaFactors([]);
+      setMfaAssuranceLevel(null);
       localStorage.removeItem(ACTIVE_REST_KEY);
     }
   };
@@ -503,6 +725,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session.user.email || '',
         session.user.user_metadata?.full_name
       );
+      await loadMfaStatus();
     }
   };
 
@@ -513,10 +736,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         activeRestaurant,
         allRestaurants,
-        isAuthenticated: !!user,
+        isAuthenticated: !!user && !mfaRequired,
         isLoading,
         isDemoMode,
+        mfaRequired,
+        mfaFactorId,
+        mfaFactors,
+        mfaAssuranceLevel,
         login,
+        verifyMfaChallenge,
+        enrollMfa,
+        verifyMfaEnrollment,
+        unenrollMfa,
+        loadMfaStatus,
         signup,
         registerWithEmail,
         logout,
