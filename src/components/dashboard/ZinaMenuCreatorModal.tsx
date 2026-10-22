@@ -1227,6 +1227,7 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
                     restaurant={activeRestaurant}
                     locale={language as FoodLanguageCode}
                     previewMode={true}
+                    isMobile={previewDevice === 'mobile'}
                     onTemplateSelect={() => {
                       const chosen = previewTemplate;
                       setPreviewTemplate(null);

@@ -347,6 +347,7 @@ export const TemplatesPage: React.FC = () => {
                   restaurant={activeRestaurant}
                   locale={previewLocale}
                   previewMode={true}
+                  isMobile={previewDevice === 'mobile'}
                   onTemplateSelect={() => {
                     const chosen = previewTemplate;
                     setPreviewTemplate(null);
