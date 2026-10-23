@@ -14,10 +14,8 @@ import {
   Save,
   Check,
   X,
-  Copy,
   Calendar,
-  BadgeCheck,
-  ShieldAlert
+  BadgeCheck
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
@@ -25,7 +23,6 @@ import { Button } from '../../components/common/Button';
 import { Alert } from '../../components/common/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { copyToClipboard } from '../../utils/clipboard';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUserProfile, changePasswordWithVerification, reloadProfile, isLoading: authLoading } = useAuth();
@@ -52,7 +49,6 @@ export const ProfilePage: React.FC = () => {
 
   // Profile refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
 
   // Sync state whenever user changes in AuthContext
   useEffect(() => {
@@ -187,14 +183,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleCopyId = () => {
-    if (user?.id) {
-      copyToClipboard(user.id);
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    }
-  };
-
   const userInitials = (user?.fullName || user?.email || 'U')
     .split(' ')
     .filter(Boolean)
@@ -297,37 +285,6 @@ export const ProfilePage: React.FC = () => {
                       {user?.createdAt ? new Date(user.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'fr-FR', { month: 'short', year: 'numeric' }) : '2026'}
                     </span>
                   </div>
-                </div>
-              </Card>
-
-              {/* Security & Authenticated Account Meta */}
-              <Card className="p-5 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-ink-main dark:text-[#F0F4F2] uppercase tracking-wider">
-                  <ShieldAlert className="w-4 h-4 text-forest dark:text-gold" />
-                  <span>{isEn ? 'Security Credentials' : 'Sécurité du Compte'}</span>
-                </div>
-
-                <p className="text-xs text-ink-secondary dark:text-[#97A7A0] leading-relaxed">
-                  {isEn
-                    ? 'Your account uses Supabase Row Level Security (RLS) and encrypted JWT authentication sessions.'
-                    : 'Votre compte est protégé par Row Level Security (RLS) et des sessions chiffrées par jetons JWT Supabase.'}
-                </p>
-
-                <div className="p-2.5 rounded-xl bg-ivory dark:bg-[#101E1A] border border-border-subtle dark:border-[#233831] text-[11px] space-y-1">
-                  <div className="text-ink-secondary dark:text-[#97A7A0] flex items-center justify-between">
-                    <span>Supabase User ID</span>
-                    <button
-                      onClick={handleCopyId}
-                      className="text-forest dark:text-gold hover:underline flex items-center gap-1 font-medium"
-                      title={isEn ? "Copy user ID" : "Copier l'identifiant"}
-                    >
-                      {copiedId ? <Check className="w-3 h-3 text-status-success" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedId ? (isEn ? 'Copied' : 'Copié') : (isEn ? 'Copy' : 'Copier')}</span>
-                    </button>
-                  </div>
-                  <p className="font-mono text-ink-main dark:text-[#F0F4F2] break-all truncate text-[10px]">
-                    {user?.id || '—'}
-                  </p>
                 </div>
               </Card>
             </div>

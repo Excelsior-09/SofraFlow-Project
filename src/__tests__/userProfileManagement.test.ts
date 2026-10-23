@@ -155,10 +155,16 @@ describe('User Profile Management — Requirements & Logic', () => {
 
     it('db service updates user profile in local store correctly', () => {
       const initialUser = db.getCurrentUser();
+      expect(initialUser).not.toBeNull();
+      if (!initialUser) throw new Error('initialUser is null');
+
       const updated = db.updateUserProfile({
         fullName: 'Sara Alami',
         phone: '+212 6 99 88 77 66'
       });
+
+      expect(updated).not.toBeNull();
+      if (!updated) throw new Error('updated is null');
 
       expect(updated.fullName).toBe('Sara Alami');
       expect(updated.phone).toBe('+212 6 99 88 77 66');
