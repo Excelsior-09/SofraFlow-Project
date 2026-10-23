@@ -12,6 +12,7 @@ import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { OrderStatusBadge, WhatsAppStatusBadge } from '../../components/common/Badge';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -21,7 +22,8 @@ import { Order, OrderStatus } from '../../types';
 
 export const OrdersPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
-  const { t, formatCurrency, formatTime } = useLanguage();
+  const { language, t, formatCurrency, formatTime } = useLanguage();
+  const isEn = language === 'en';
   const [orders, setOrders] = useState<Order[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -54,17 +56,15 @@ export const OrdersPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <ShoppingBag className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            Aucun établissement actif
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            Veuillez sélectionner ou créer votre établissement pour visualiser et gérer vos commandes en direct.
-          </p>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<ShoppingBag className="w-8 h-8" />}
+          title={isEn ? 'No active establishment' : 'Aucun établissement actif'}
+          description={
+            isEn
+              ? 'Please select or create your establishment to monitor and manage live kitchen orders.'
+              : 'Veuillez sélectionner ou créer votre établissement pour visualiser et gérer vos commandes en direct.'
+          }
+        />
       </DashboardLayout>
     );
   }

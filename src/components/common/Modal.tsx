@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md'
 }) => {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -66,7 +69,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 rounded-full text-ink-secondary dark:text-[#97A7A0] hover:text-ink-main dark:hover:text-[#F0F4F2] hover:bg-ivory dark:hover:bg-[#1B2F29] transition-colors"
-            aria-label="Fermer le dialogue"
+            aria-label={isEn ? "Close dialog" : "Fermer le dialogue"}
           >
             <X className="w-5 h-5" />
           </button>

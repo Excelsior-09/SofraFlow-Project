@@ -119,7 +119,7 @@ export const MarketingNav: React.FC = () => {
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-xl text-ink-main dark:text-dark-text hover:bg-white dark:hover:bg-dark-card border border-border-subtle dark:border-dark-border"
-            aria-label="Basculer le menu de navigation"
+            aria-label={isEn ? "Toggle navigation menu" : "Basculer le menu de navigation"}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
           </button>

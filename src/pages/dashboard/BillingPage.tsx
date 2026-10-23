@@ -30,6 +30,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Alert } from '../../components/common/Alert';
 import { Modal } from '../../components/common/Modal';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -74,6 +75,8 @@ const ResponsiveCopyRow: React.FC<ResponsiveCopyRowProps> = ({
   onCopy,
   isMonospace = true
 }) => {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
   return (
     <div className="p-3.5 sm:p-4 rounded-xl bg-ivory dark:bg-dark-surface border border-border-subtle dark:border-dark-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all hover:border-forest/20 dark:hover:border-gold/20 shadow-xs">
       <div className="min-w-0 flex-1">
@@ -100,7 +103,7 @@ const ResponsiveCopyRow: React.FC<ResponsiveCopyRowProps> = ({
         {isCopied ? (
           <>
             <Check className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Copié !</span>
+            <span>{isEn ? 'Copied!' : 'Copié !'}</span>
           </>
         ) : (
           <>
@@ -115,7 +118,8 @@ const ResponsiveCopyRow: React.FC<ResponsiveCopyRowProps> = ({
 
 export const BillingPage: React.FC = () => {
   const { user, activeRestaurant, refreshState } = useAuth();
-  const { t, formatCurrency } = useLanguage();
+  const { language, t, formatCurrency } = useLanguage();
+  const isEn = language === 'en';
 
   // Subscription plan selection
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'growth' | 'pro'>('growth');
@@ -214,17 +218,15 @@ export const BillingPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <CreditCard className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            Aucun établissement actif
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            Veuillez sélectionner ou créer votre établissement pour consulter vos informations d'abonnement et de facturation.
-          </p>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<CreditCard className="w-8 h-8" />}
+          title={isEn ? 'No active establishment' : 'Aucun établissement actif'}
+          description={
+            isEn
+              ? 'Please select or create your establishment to view your subscription and billing details.'
+              : 'Veuillez sélectionner ou créer votre établissement pour consulter vos informations d’abonnement et de facturation.'
+          }
+        />
       </DashboardLayout>
     );
   }
@@ -345,7 +347,7 @@ export const BillingPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error submitting payment proof:', err);
-      setFormErrorMessage(err?.message || "Erreur lors de la transmission du justificatif. Veuillez réessayer.");
+      setFormErrorMessage(err?.message || (isEn ? "Error submitting payment proof. Please try again." : "Erreur lors de la transmission du justificatif. Veuillez réessayer."));
     } finally {
       setIsSubmittingProof(false);
     }
@@ -353,13 +355,16 @@ export const BillingPage: React.FC = () => {
 
   // Admin approval action
   const handleAdminApprove = async (request: SubscriptionPaymentRequest) => {
-    if (!confirm(`Confirmer l'approbation du paiement de ${request.amount} MAD pour le restaurant "${request.restaurantName || request.restaurantId}" ?\n\nCette action activera immédiatement l'abonnement "${request.plan.toUpperCase()}".`)) {
+    const confirmMsg = isEn
+      ? `Confirm approval of payment of ${request.amount} MAD for restaurant "${request.restaurantName || request.restaurantId}"?\n\nThis action will immediately activate the "${request.plan.toUpperCase()}" subscription.`
+      : `Confirmer l'approbation du paiement de ${request.amount} MAD pour le restaurant "${request.restaurantName || request.restaurantId}" ?\n\nCette action activera immédiatement l'abonnement "${request.plan.toUpperCase()}".`;
+    if (!confirm(confirmMsg)) {
       return;
     }
 
     setIsProcessingAdminAction(true);
     try {
-      const verifierName = user?.fullName || user?.email || 'Administrateur SOFRAFLOW';
+      const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
 
       if (isSupabaseConfigured) {
         await supabaseService.updatePaymentRequestStatus(request.id, 'approved', {
@@ -375,7 +380,7 @@ export const BillingPage: React.FC = () => {
       await loadAdminRequests();
     } catch (err: any) {
       console.error('Error approving payment request:', err);
-      alert("Erreur lors de l'approbation : " + (err.message || 'Action impossible'));
+      alert((isEn ? "Error approving payment: " : "Erreur lors de l'approbation : ") + (err.message || (isEn ? 'Action failed' : 'Action impossible')));
     } finally {
       setIsProcessingAdminAction(false);
     }
@@ -385,13 +390,13 @@ export const BillingPage: React.FC = () => {
   const handleAdminRejectSubmit = async () => {
     if (!rejectingRequestId) return;
     if (!rejectionReason.trim()) {
-      alert("Veuillez indiquer un motif de refus précis pour informer le client.");
+      alert(isEn ? "Please enter a specific rejection reason to inform the client." : "Veuillez indiquer un motif de refus précis pour informer le client.");
       return;
     }
 
     setIsProcessingAdminAction(true);
     try {
-      const verifierName = user?.fullName || user?.email || 'Administrateur SOFRAFLOW';
+      const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
 
       if (isSupabaseConfigured) {
         await supabaseService.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
@@ -410,7 +415,7 @@ export const BillingPage: React.FC = () => {
       await loadAdminRequests();
     } catch (err: any) {
       console.error('Error rejecting payment request:', err);
-      alert("Erreur lors du refus : " + (err.message || 'Action impossible'));
+      alert((isEn ? "Error rejecting payment: " : "Erreur lors du refus : ") + (err.message || (isEn ? 'Action failed' : 'Action impossible')));
     } finally {
       setIsProcessingAdminAction(false);
     }
@@ -1406,7 +1411,7 @@ export const BillingPage: React.FC = () => {
                   <div className="flex items-start gap-2 text-xs">
                     <AlertCircle className="w-4 h-4 text-status-error shrink-0 mt-0.5" />
                     <div>
-                      <strong className="block font-bold">Erreur :</strong>
+                      <strong className="block font-bold">{isEn ? 'Error:' : 'Erreur :'}</strong>
                       {formErrorMessage}
                     </div>
                   </div>
@@ -1417,15 +1422,15 @@ export const BillingPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-ivory dark:bg-dark-surface border border-border-subtle dark:border-dark-border text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-ink-secondary dark:text-dark-muted block">
-                    Formule & Période
+                    {isEn ? 'Plan & Period' : 'Formule & Période'}
                   </span>
                   <span className="font-extrabold text-forest dark:text-dark-text">
-                    {planConfig.name} ({billingPeriod === 'annual' ? 'Annuel' : 'Mensuel'})
+                    {planConfig.name} ({billingPeriod === 'annual' ? (isEn ? 'Annual' : 'Annuel') : (isEn ? 'Monthly' : 'Mensuel')})
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-ink-secondary dark:text-dark-muted block">
-                    Montant exigible
+                    {isEn ? 'Amount Due' : 'Montant exigible'}
                   </span>
                   <span className="font-extrabold text-forest dark:text-gold text-sm">
                     {amountDue} MAD
@@ -1433,7 +1438,7 @@ export const BillingPage: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-ink-secondary dark:text-dark-muted block">
-                    Moyen de règlement
+                    {isEn ? 'Payment Method' : 'Moyen de règlement'}
                   </span>
                   <span className="font-extrabold text-forest dark:text-dark-text">
                     {getMethodDisplayName(selectedMethod)}
@@ -1445,42 +1450,42 @@ export const BillingPage: React.FC = () => {
                 {/* Transaction Reference */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                    Référence de l'opération / Numéro de virement / Code MTCN, MoneyGram ou Ria <span className="text-red-500">*</span>
+                    {isEn ? "Transaction Reference / Transfer Number / MTCN, MoneyGram or Ria Code" : "Référence de l'opération / Numéro de virement / Code MTCN, MoneyGram ou Ria"} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={transactionRef}
                     onChange={e => setTransactionRef(e.target.value)}
-                    placeholder="Ex: VIR-20261022-8941, MTCN ou Réf. transfert"
+                    placeholder={isEn ? "e.g. VIR-20261022-8941, MTCN or Transfer Ref" : "Ex: VIR-20261022-8941, MTCN ou Réf. transfert"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-surface text-xs text-ink-main dark:text-dark-text focus:outline-hidden focus:ring-2 focus:ring-forest/30 dark:focus:ring-gold/30 font-mono"
                   />
                   <p className="text-[11px] text-ink-secondary dark:text-dark-muted">
-                    Numéro figurant sur votre reçu de virement ou bordereau de transfert.
+                    {isEn ? "Number shown on your bank receipt or transfer slip." : "Numéro figurant sur votre reçu de virement ou bordereau de transfert."}
                   </p>
                 </div>
 
                 {/* Payer Full Name */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                    Nom et prénom de l'émetteur
+                    {isEn ? "Sender Full Name" : "Nom et prénom de l'émetteur"}
                   </label>
                   <input
                     type="text"
                     value={payerName}
                     onChange={e => setPayerName(e.target.value)}
-                    placeholder="Ex: Anas Alami"
+                    placeholder={isEn ? "e.g. Anas Alami" : "Ex: Anas Alami"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-surface text-xs text-ink-main dark:text-dark-text focus:outline-hidden focus:ring-2 focus:ring-forest/30 dark:focus:ring-gold/30"
                   />
                   <p className="text-[11px] text-ink-secondary dark:text-dark-muted">
-                    Nom du titulaire du compte émetteur ou expéditeur du mandat.
+                    {isEn ? "Name of the account holder or transfer sender." : "Nom du titulaire du compte émetteur ou expéditeur du mandat."}
                   </p>
                 </div>
 
                 {/* Payer Phone */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                    Téléphone de contact
+                    {isEn ? "Contact Phone" : "Téléphone de contact"}
                   </label>
                   <input
                     type="tel"
@@ -1494,13 +1499,13 @@ export const BillingPage: React.FC = () => {
                 {/* Additional Notes */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                    Commentaires ou précisions (optionnel)
+                    {isEn ? "Comments or Notes (Optional)" : "Commentaires ou précisions (optionnel)"}
                   </label>
                   <input
                     type="text"
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
-                    placeholder="Ex: Virement instantané effectué à 14h30"
+                    placeholder={isEn ? "e.g. Instant transfer sent at 2:30 PM" : "Ex: Virement instantané effectué à 14h30"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-surface text-xs text-ink-main dark:text-dark-text focus:outline-hidden focus:ring-2 focus:ring-forest/30 dark:focus:ring-gold/30"
                   />
                 </div>
@@ -1509,7 +1514,7 @@ export const BillingPage: React.FC = () => {
               {/* Receipt File Upload */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                  Reçu / Justificatif de virement (Image ou PDF)
+                  {isEn ? "Receipt / Transfer Proof (Image or PDF)" : "Reçu / Justificatif de virement (Image ou PDF)"}
                 </label>
 
                 <div
@@ -1529,7 +1534,7 @@ export const BillingPage: React.FC = () => {
                       {receiptPreviewUrl ? (
                         <img
                           src={receiptPreviewUrl}
-                          alt="Aperçu du reçu"
+                          alt={isEn ? "Receipt preview" : "Aperçu du reçu"}
                           className="h-28 object-contain rounded-lg border border-border-subtle shadow-xs"
                         />
                       ) : (
@@ -1539,7 +1544,7 @@ export const BillingPage: React.FC = () => {
                         {receiptFile.name} ({(receiptFile.size / 1024).toFixed(1)} Ko)
                       </p>
                       <span className="text-[11px] text-forest dark:text-gold hover:underline">
-                        Cliquer pour remplacer le fichier
+                        {isEn ? "Click to replace file" : "Cliquer pour remplacer le fichier"}
                       </span>
                     </div>
                   ) : (
@@ -1549,10 +1554,10 @@ export const BillingPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-forest dark:text-dark-text">
-                          Glissez votre reçu ici ou cliquez pour parcourir
+                          {isEn ? "Drag your receipt here or click to browse" : "Glissez votre reçu ici ou cliquez pour parcourir"}
                         </p>
                         <p className="text-[11px] text-ink-secondary dark:text-dark-muted mt-0.5">
-                          Formats acceptés : JPG, PNG, WEBP, PDF (Taille maximale : 5 Mo)
+                          {isEn ? "Accepted formats: JPG, PNG, WEBP, PDF (Max size: 5 MB)" : "Formats acceptés : JPG, PNG, WEBP, PDF (Taille maximale : 5 Mo)"}
                         </p>
                       </div>
                     </div>
@@ -1564,7 +1569,10 @@ export const BillingPage: React.FC = () => {
               <div className="p-3.5 rounded-xl bg-ivory dark:bg-dark-surface border border-border-subtle dark:border-dark-border flex items-start gap-2.5 text-xs text-ink-secondary dark:text-dark-secondary">
                 <ShieldCheck className="w-4 h-4 text-forest dark:text-gold shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  <strong>Processus de vérification sécurisé :</strong> Conformément à notre politique de conformité, l'activation de votre formule est opérée manuellement par notre équipe dès validation de la réception des fonds sur nos comptes marocains (délai indicatif moyen : 15 min à 2h ouvrées).
+                  <strong>{isEn ? "Secure verification process:" : "Processus de vérification sécurisé :"}</strong>{" "}
+                  {isEn
+                    ? "In accordance with our compliance policy, your plan is activated manually by our team as soon as funds are confirmed in our Moroccan bank accounts (typical timeframe: 15 min to 2 business hours)."
+                    : "Conformément à notre politique de conformité, l'activation de votre formule est opérée manuellement par notre équipe dès validation de la réception des fonds sur nos comptes marocains (délai indicatif moyen : 15 min à 2h ouvrées)."}
                 </p>
               </div>
 
@@ -1580,12 +1588,12 @@ export const BillingPage: React.FC = () => {
                   {isSubmittingProof ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Envoi en cours...</span>
+                      <span>{isEn ? "Uploading..." : "Envoi en cours..."}</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Soumettre mon justificatif de paiement</span>
+                      <span>{isEn ? "Submit payment proof" : "Soumettre mon justificatif de paiement"}</span>
                     </>
                   )}
                 </Button>
@@ -1599,10 +1607,10 @@ export const BillingPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-forest dark:text-dark-text font-display">
-                Suivi de vos demandes de règlement
+                {isEn ? "Payment Requests Tracking" : "Suivi de vos demandes de règlement"}
               </h2>
               <p className="text-xs text-ink-secondary dark:text-dark-secondary">
-                Consultez l'état de validation de vos derniers paiements et l'historique d'activation.
+                {isEn ? "Check the verification status of your latest payments and activation history." : "Consultez l'état de validation de vos derniers paiements et l'historique d'activation."}
               </p>
             </div>
             <Button
@@ -1612,7 +1620,7 @@ export const BillingPage: React.FC = () => {
               className="text-xs flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingRequests ? 'animate-spin' : ''}`} />
-              <span>Actualiser</span>
+              <span>{isEn ? "Refresh" : "Actualiser"}</span>
             </Button>
           </div>
 
@@ -1620,10 +1628,10 @@ export const BillingPage: React.FC = () => {
             <Card className="p-8 text-center bg-white dark:bg-dark-card border border-border-subtle dark:border-dark-border">
               <Clock className="w-8 h-8 text-ink-secondary dark:text-dark-muted mx-auto mb-2 opacity-50" />
               <p className="text-xs font-semibold text-forest dark:text-dark-text">
-                Aucune demande de paiement en cours
+                {isEn ? "No pending payment requests" : "Aucune demande de paiement en cours"}
               </p>
               <p className="text-[11px] text-ink-secondary dark:text-dark-muted mt-1 max-w-sm mx-auto">
-                Lorsque vous effectuez un virement et soumettez votre reçu, le statut de traitement s'affichera ici en temps réel.
+                {isEn ? "When you make a bank transfer and submit your receipt, the verification status will appear here in real time." : "Lorsque vous effectuez un virement et soumettez votre reçu, le statut de traitement s'affichera ici en temps réel."}
               </p>
             </Card>
           ) : (
@@ -1634,29 +1642,29 @@ export const BillingPage: React.FC = () => {
                     case 'approved':
                       return {
                         variant: 'success' as const,
-                        title: 'Paiement confirmé',
-                        desc: 'Votre paiement a été confirmé et votre abonnement est activé.',
+                        title: isEn ? 'Payment confirmed' : 'Paiement confirmé',
+                        desc: isEn ? 'Your payment has been confirmed and your subscription is active.' : 'Votre paiement a été confirmé et votre abonnement est activé.',
                         icon: CheckCircle2
                       };
                     case 'under_review':
                       return {
                         variant: 'warning' as const,
-                        title: 'En cours de vérification',
-                        desc: "Votre justificatif a été reçu. Votre paiement doit être vérifié avant l'activation de l'abonnement.",
+                        title: isEn ? 'Under verification' : 'En cours de vérification',
+                        desc: isEn ? 'Your receipt was received. Your payment must be verified before subscription activation.' : "Votre justificatif a été reçu. Votre paiement doit être vérifié avant l'activation de l'abonnement.",
                         icon: Clock
                       };
                     case 'rejected':
                       return {
                         variant: 'error' as const,
-                        title: 'Paiement refusé',
-                        desc: "Votre paiement n'a pas pu être confirmé. Consultez le motif indiqué et contactez-nous si nécessaire.",
+                        title: isEn ? 'Payment rejected' : 'Paiement refusé',
+                        desc: isEn ? "Your payment could not be confirmed. Check the specified reason and contact us if needed." : "Votre paiement n'a pas pu être confirmé. Consultez le motif indiqué et contactez-nous si nécessaire.",
                         icon: XCircle
                       };
                     default:
                       return {
                         variant: 'neutral' as const,
-                        title: 'En attente de paiement',
-                        desc: 'Effectuez le paiement en utilisant les informations fournies.',
+                        title: isEn ? 'Awaiting payment' : 'En attente de paiement',
+                        desc: isEn ? 'Complete payment using the provided details.' : 'Effectuez le paiement en utilisant les informations fournies.',
                         icon: Clock
                       };
                   }
@@ -1678,14 +1686,14 @@ export const BillingPage: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-extrabold text-sm text-forest dark:text-dark-text capitalize">
-                              Formule {req.plan} ({req.billingPeriod === 'annual' ? 'Annuel' : 'Mensuel'})
+                              {isEn ? 'Plan' : 'Formule'} {req.plan} ({req.billingPeriod === 'annual' ? (isEn ? 'Annual' : 'Annuel') : (isEn ? 'Monthly' : 'Mensuel')})
                             </span>
                             <Badge variant={statusInfo.variant} size="sm">
                               {statusInfo.title}
                             </Badge>
                           </div>
                           <span className="text-[11px] text-ink-secondary dark:text-dark-muted">
-                            Mode : <strong className="text-forest dark:text-gold">{getMethodDisplayName(req.paymentMethod)}</strong> • Réf : <strong className="font-mono">{req.transactionReference}</strong> • {new Date(req.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {isEn ? 'Method: ' : 'Mode : '}<strong className="text-forest dark:text-gold">{getMethodDisplayName(req.paymentMethod)}</strong> • {isEn ? 'Ref: ' : 'Réf : '}<strong className="font-mono">{req.transactionReference}</strong> • {new Date(req.createdAt).toLocaleDateString(isEn ? 'en-US' : 'fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       </div>
@@ -1699,7 +1707,7 @@ export const BillingPage: React.FC = () => {
                             className="text-xs h-7 px-2.5 flex items-center gap-1"
                           >
                             <Eye className="w-3 h-3" />
-                            <span>Voir le reçu</span>
+                            <span>{isEn ? "View receipt" : "Voir le reçu"}</span>
                           </Button>
                         )}
                       </div>
@@ -1715,12 +1723,12 @@ export const BillingPage: React.FC = () => {
                         </p>
                         {req.rejectionReason && (
                           <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-[11px] font-semibold mt-1">
-                            Motif du refus : {req.rejectionReason}
+                            {isEn ? "Rejection reason: " : "Motif du refus : "}{req.rejectionReason}
                           </div>
                         )}
                         {req.verifiedBy && (
                           <p className="text-[10px] text-ink-secondary dark:text-dark-muted">
-                            Vérifié par {req.verifiedBy} le {req.verifiedAt ? new Date(req.verifiedAt).toLocaleDateString('fr-FR') : ''}
+                            {isEn ? `Verified by ${req.verifiedBy} on ` : `Vérifié par ${req.verifiedBy} le `}{req.verifiedAt ? new Date(req.verifiedAt).toLocaleDateString(isEn ? 'en-US' : 'fr-FR') : ''}
                           </p>
                         )}
                       </div>
@@ -1740,11 +1748,11 @@ export const BillingPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse" />
                   <h2 className="text-lg sm:text-xl font-bold text-purple-950 dark:text-purple-200 font-display">
-                    Espace Administrateur — Vérification des paiements
+                    {isEn ? "Admin Area — Payment Verification" : "Espace Administrateur — Vérification des paiements"}
                   </h2>
                 </div>
                 <p className="text-xs text-ink-secondary dark:text-dark-secondary mt-0.5">
-                  Vérification financière des virements bancaires et activations sécurisées d'abonnements.
+                  {isEn ? "Financial verification of bank transfers and secure subscription activations." : "Vérification financière des virements bancaires et activations sécurisées d'abonnements."}
                 </p>
               </div>
 
@@ -1761,10 +1769,10 @@ export const BillingPage: React.FC = () => {
                         : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 hover:bg-purple-200'
                     }`}
                   >
-                    {tab === 'all' && 'Tous'}
-                    {tab === 'under_review' && 'À vérifier'}
-                    {tab === 'approved' && 'Validés'}
-                    {tab === 'rejected' && 'Refusés'}
+                    {tab === 'all' && (isEn ? 'All' : 'Tous')}
+                    {tab === 'under_review' && (isEn ? 'To verify' : 'À vérifier')}
+                    {tab === 'approved' && (isEn ? 'Approved' : 'Validés')}
+                    {tab === 'rejected' && (isEn ? 'Rejected' : 'Refusés')}
                   </button>
                 ))}
               </div>
@@ -1773,7 +1781,7 @@ export const BillingPage: React.FC = () => {
             {filteredAdminRequests.length === 0 ? (
               <Card className="p-6 text-center bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50">
                 <p className="text-xs text-purple-900 dark:text-purple-300 font-semibold">
-                  Aucune demande trouvée avec ce filtre.
+                  {isEn ? "No requests found with this filter." : "Aucune demande trouvée avec ce filtre."}
                 </p>
               </Card>
             ) : (
@@ -1800,28 +1808,28 @@ export const BillingPage: React.FC = () => {
                             }
                             size="sm"
                           >
-                            {req.status === 'approved' ? 'Validé' : req.status === 'rejected' ? 'Refusé' : 'À vérifier'}
+                            {req.status === 'approved' ? (isEn ? 'Approved' : 'Validé') : req.status === 'rejected' ? (isEn ? 'Rejected' : 'Refusé') : (isEn ? 'To verify' : 'À vérifier')}
                           </Badge>
                         </div>
 
                         <div className="text-xs text-ink-secondary dark:text-dark-secondary flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span>Formule : <strong>{req.plan.toUpperCase()}</strong></span>
+                          <span>{isEn ? 'Plan: ' : 'Formule : '}<strong>{req.plan.toUpperCase()}</strong></span>
                           <span>•</span>
-                          <span>Montant : <strong className="text-forest dark:text-gold">{req.amount} MAD</strong></span>
+                          <span>{isEn ? 'Amount: ' : 'Montant : '}<strong className="text-forest dark:text-gold">{req.amount} MAD</strong></span>
                           <span>•</span>
-                          <span>Méthode : <strong className="capitalize text-forest dark:text-gold">{getMethodDisplayName(req.paymentMethod)}</strong></span>
+                          <span>{isEn ? 'Method: ' : 'Méthode : '}<strong className="capitalize text-forest dark:text-gold">{getMethodDisplayName(req.paymentMethod)}</strong></span>
                           <span>•</span>
-                          <span>Réf : <strong className="font-mono text-ink-main dark:text-dark-text">{req.transactionReference}</strong></span>
+                          <span>{isEn ? 'Ref: ' : 'Réf : '}<strong className="font-mono text-ink-main dark:text-dark-text">{req.transactionReference}</strong></span>
                         </div>
 
                         {req.payerName && (
                           <p className="text-[11px] text-ink-secondary dark:text-dark-muted">
-                            Émetteur déclaré : {req.payerName} {req.payerPhone ? `(${req.payerPhone})` : ''}
+                            {isEn ? 'Declared sender: ' : 'Émetteur déclaré : '}{req.payerName} {req.payerPhone ? `(${req.payerPhone})` : ''}
                           </p>
                         )}
                         {req.notes && (
                           <p className="text-[11px] italic text-ink-secondary dark:text-dark-muted">
-                            Note client : "{req.notes}"
+                            {isEn ? 'Client note: ' : 'Note client : '}"{req.notes}"
                           </p>
                         )}
                       </div>
@@ -1835,7 +1843,7 @@ export const BillingPage: React.FC = () => {
                             className="text-xs h-8 px-2.5 flex items-center gap-1 border-purple-300"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>Voir le reçu</span>
+                            <span>{isEn ? "View receipt" : "Voir le reçu"}</span>
                           </Button>
                         )}
 
@@ -1848,7 +1856,7 @@ export const BillingPage: React.FC = () => {
                             className="text-xs h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
                           >
                             <Check className="w-3.5 h-3.5" />
-                            <span>Approuver le paiement</span>
+                            <span>{isEn ? "Approve payment" : "Approuver le paiement"}</span>
                           </Button>
                         )}
 
@@ -1864,7 +1872,7 @@ export const BillingPage: React.FC = () => {
                             className="text-xs h-8 px-3 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center gap-1.5"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>Refuser</span>
+                            <span>{isEn ? "Reject" : "Refuser"}</span>
                           </Button>
                         )}
                       </div>
@@ -1880,8 +1888,8 @@ export const BillingPage: React.FC = () => {
         <Modal
           isOpen={isQrModalOpen}
           onClose={() => setIsQrModalOpen(false)}
-          title={qrModalInfo?.title || "Scanner le QR Code"}
-          description={qrModalInfo?.subtitle || "Présentez ce QR Code dans votre application bancaire mobile"}
+          title={qrModalInfo?.title || (isEn ? "Scan QR Code" : "Scanner le QR Code")}
+          description={qrModalInfo?.subtitle || (isEn ? "Show this QR Code in your mobile banking app" : "Présentez ce QR Code dans votre application bancaire mobile")}
         >
           {qrModalInfo && (
             <div className="space-y-4 text-center">
@@ -1893,7 +1901,9 @@ export const BillingPage: React.FC = () => {
                 />
               </div>
               <p className="text-xs text-ink-secondary dark:text-dark-muted">
-                Ouvrez votre application bancaire (CIH Mobile ou Attijari SmartPay) et utilisez la fonction "Scanner un QR Code de paiement".
+                {isEn
+                  ? 'Open your banking app (CIH Mobile or Attijari SmartPay) and use the "Scan payment QR code" feature.'
+                  : 'Ouvrez votre application bancaire (CIH Mobile ou Attijari SmartPay) et utilisez la fonction "Scanner un QR Code de paiement".'}
               </p>
               <div className="pt-2 flex justify-center gap-2">
                 <a
@@ -1902,10 +1912,10 @@ export const BillingPage: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-forest text-white text-xs font-bold hover:bg-forest-light transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Télécharger l'image</span>
+                  <span>{isEn ? "Download image" : "Télécharger l'image"}</span>
                 </a>
                 <Button variant="outline" size="sm" onClick={() => setIsQrModalOpen(false)}>
-                  Fermer
+                  {isEn ? "Close" : "Fermer"}
                 </Button>
               </div>
             </div>
@@ -1916,21 +1926,21 @@ export const BillingPage: React.FC = () => {
         <Modal
           isOpen={!!viewingReceiptUrl}
           onClose={() => setViewingReceiptUrl(null)}
-          title="Justificatif de virement bancaire"
-          description="Visualisation sécurisée du reçu transmis par le client"
+          title={isEn ? "Bank Transfer Receipt" : "Justificatif de virement bancaire"}
+          description={isEn ? "Secure viewing of receipt submitted by client" : "Visualisation sécurisée du reçu transmis par le client"}
         >
           {viewingReceiptUrl && (
             <div className="space-y-4 text-center">
               <div className="max-h-[60vh] overflow-auto p-2 bg-black/5 dark:bg-white/5 rounded-2xl border border-border-subtle">
                 <img
                   src={viewingReceiptUrl}
-                  alt="Justificatif de virement"
+                  alt={isEn ? "Transfer receipt" : "Justificatif de virement"}
                   className="max-w-full h-auto mx-auto rounded-lg shadow-xs"
                 />
               </div>
               <div className="flex justify-end">
                 <Button variant="outline" size="sm" onClick={() => setViewingReceiptUrl(null)}>
-                  Fermer
+                  {isEn ? "Close" : "Fermer"}
                 </Button>
               </div>
             </div>
@@ -1941,19 +1951,19 @@ export const BillingPage: React.FC = () => {
         <Modal
           isOpen={!!rejectingRequestId}
           onClose={() => setRejectingRequestId(null)}
-          title="Refuser la demande de paiement"
-          description="Indiquez au client le motif du refus afin qu'il puisse corriger son règlement."
+          title={isEn ? "Reject payment request" : "Refuser la demande de paiement"}
+          description={isEn ? "Provide the client with a rejection reason so they can correct their payment." : "Indiquez au client le motif du refus afin qu'il puisse corriger son règlement."}
         >
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                Motif du refus (visible par le client) <span className="text-red-500">*</span>
+                {isEn ? "Rejection reason (visible to client)" : "Motif du refus (visible par le client)"} <span className="text-red-500">*</span>
               </label>
               <textarea
                 rows={3}
                 value={rejectionReason}
                 onChange={e => setRejectionReason(e.target.value)}
-                placeholder="Ex: Virement non réceptionné sur le compte, montant incomplet, ou référence introuvable."
+                placeholder={isEn ? "e.g. Transfer not received on account, incomplete amount, or reference not found." : "Ex: Virement non réceptionné sur le compte, montant incomplet, ou référence introuvable."}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-surface text-xs text-ink-main dark:text-dark-text focus:outline-hidden focus:ring-2 focus:ring-red-400"
               />
             </div>
@@ -1965,7 +1975,7 @@ export const BillingPage: React.FC = () => {
                 onClick={() => setRejectingRequestId(null)}
                 disabled={isProcessingAdminAction}
               >
-                Annuler
+                {isEn ? "Cancel" : "Annuler"}
               </Button>
               <Button
                 variant="primary"
@@ -1974,7 +1984,7 @@ export const BillingPage: React.FC = () => {
                 disabled={isProcessingAdminAction || !rejectionReason.trim()}
                 className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
               >
-                {isProcessingAdminAction ? 'Traitement...' : 'Confirmer le refus'}
+                {isProcessingAdminAction ? (isEn ? 'Processing...' : 'Traitement...') : (isEn ? 'Confirm rejection' : 'Confirmer le refus')}
               </Button>
             </div>
           </div>

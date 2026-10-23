@@ -6,6 +6,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -17,7 +18,8 @@ export const MenuDetailPage: React.FC = () => {
   const { menuId } = useParams<{ menuId: string }>();
   const navigate = useNavigate();
   const { activeRestaurant } = useAuth();
-  const { t, formatCurrency } = useLanguage();
+  const { language, t, formatCurrency } = useLanguage();
+  const isEn = language === 'en';
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -70,25 +72,19 @@ export const MenuDetailPage: React.FC = () => {
   if (!activeRestaurant || !menu) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            Menu introuvable
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            Le menu demandé n'existe pas ou aucun établissement actif n'a été sélectionné.
-          </p>
-          <div className="pt-2">
-            <Link to="/app/menus">
-              <Button size="sm" variant="outline">
-                <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                Retour aux menus
-              </Button>
-            </Link>
-          </div>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<BookOpen className="w-8 h-8" />}
+          title={isEn ? 'Menu not found' : 'Menu introuvable'}
+          description={
+            isEn
+              ? 'The requested menu does not exist or no active establishment has been selected.'
+              : 'Le menu demandé n’existe pas ou aucun établissement actif n’a été sélectionné.'
+          }
+          actionTo="/app/menus"
+          actionLabel={isEn ? 'Back to Menus' : 'Retour aux menus'}
+          secondaryActionTo="/onboarding"
+          secondaryActionLabel={isEn ? 'Launch Setup Assistant' : 'Lancer l’Assistant'}
+        />
       </DashboardLayout>
     );
   }

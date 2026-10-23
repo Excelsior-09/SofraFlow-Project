@@ -163,7 +163,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 rounded-full text-ink-secondary dark:text-dark-muted hover:bg-gray-100 dark:hover:bg-dark-card"
-            aria-label="Fermer"
+            aria-label={t('common.close')}
           >
             <X className="w-5 h-5" />
           </button>

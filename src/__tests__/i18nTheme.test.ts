@@ -228,3 +228,139 @@ describe('Theme State & Scoping System', () => {
     expect(mockDocumentElement.classList.contains('dark')).toBe(false);
   });
 });
+
+describe('Dashboard Empty States & Bilingual Language Consistency', () => {
+  function getAllLeafKeys(obj: Record<string, any>, prefix = ''): string[] {
+    let keys: string[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+      const fullPath = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        keys = keys.concat(getAllLeafKeys(value, fullPath));
+      } else {
+        keys.push(fullPath);
+      }
+    }
+    return keys;
+  }
+
+  it('guarantees complete translation key parity between English and French dictionaries', () => {
+    const frKeys = new Set(getAllLeafKeys(dictionaries.fr));
+    const enKeys = new Set(getAllLeafKeys(dictionaries.en));
+
+    // Every key in French must exist in English
+    const missingInEn: string[] = [];
+    for (const k of frKeys) {
+      if (!enKeys.has(k)) {
+        missingInEn.push(k);
+      }
+    }
+
+    // Every key in English must exist in French
+    const missingInFr: string[] = [];
+    for (const k of enKeys) {
+      if (!frKeys.has(k)) {
+        missingInFr.push(k);
+      }
+    }
+
+    expect(missingInEn).toEqual([]);
+    expect(missingInFr).toEqual([]);
+  });
+
+  it('provides complete translations for all empty states, buttons, and navigation keys in both languages', () => {
+    const namespaces = ['common', 'navigation', 'dashboard', 'menus', 'products', 'orders', 'qrNfc', 'settings', 'help'] as const;
+
+    for (const ns of namespaces) {
+      const frNs = dictionaries.fr[ns] as Record<string, any>;
+      const enNs = dictionaries.en[ns] as Record<string, any>;
+      expect(frNs).toBeDefined();
+      expect(enNs).toBeDefined();
+
+      for (const [key, val] of Object.entries(frNs)) {
+        if (typeof val === 'string') {
+          expect(val.trim().length).toBeGreaterThan(0);
+          expect(typeof enNs[key]).toBe('string');
+          expect((enNs[key] as string).trim().length).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('verifies NoActiveRestaurantCard generates appropriate strings and actions for English and French', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const cardPath = path.resolve(__dirname, '../components/common/NoActiveRestaurantCard.tsx');
+    const content = fs.readFileSync(cardPath, 'utf-8');
+
+    // Must handle English and French localization
+    expect(content).toContain("isEn ? 'No active establishment' : 'Aucun établissement actif'");
+    expect(content).toContain("isEn ? 'Launch Setup Assistant' : 'Lancer l’Assistant de Configuration'");
+    expect(content).toContain("actionTo = '/onboarding'");
+    expect(content).toContain("<Link to={actionTo}>");
+  });
+
+  it('verifies DashboardLayout restaurant switcher falls back cleanly to selected language when no restaurant is active', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const layoutPath = path.resolve(__dirname, '../components/dashboard/DashboardLayout.tsx');
+    const content = fs.readFileSync(layoutPath, 'utf-8');
+
+    // English fallbacks
+    expect(content).toContain("isEn ? 'No active restaurant' : 'Aucun établissement'");
+    expect(content).toContain("isEn ? 'No active establishment' : 'Aucun établissement actif'");
+    expect(content).toContain("isEn ? 'Morocco' : 'Maroc'");
+    expect(content).toContain("isEn ? \"Open menu\" : \"Ouvrir le menu\"");
+    expect(content).toContain("isEn ? \"View live orders\" : \"Voir les commandes en direct\"");
+  });
+
+  it('verifies all dashboard pages use localized empty states and link to onboarding', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const dashboardDir = path.resolve(__dirname, '../pages/dashboard');
+
+    const pages = [
+      'MenusPage.tsx',
+      'MenuDetailPage.tsx',
+      'ProductsPage.tsx',
+      'OrdersPage.tsx',
+      'OrderDetailPage.tsx',
+      'AnalyticsPage.tsx',
+      'SettingsPage.tsx',
+      'QrNfcPage.tsx',
+      'WhatsAppPage.tsx',
+      'LanguagesPage.tsx',
+      'BillingPage.tsx',
+      'TemplatesPage.tsx',
+      'HelpPage.tsx',
+      'OverviewPage.tsx'
+    ];
+
+    for (const page of pages) {
+      const pageFile = path.join(dashboardDir, page);
+      const content = fs.readFileSync(pageFile, 'utf-8');
+
+      // None of the dashboard pages should have a naked unlocalized "Aucun établissement actif" without isEn check
+      if (content.includes('Aucun établissement actif')) {
+        expect(content).toContain('isEn');
+      }
+
+      // If page handles !activeRestaurant, it must be wrapped in DashboardLayout
+      if (content.includes('!activeRestaurant')) {
+        expect(content).toContain('<DashboardLayout>');
+      }
+    }
+  });
+
+  it('verifies HelpPage supports bilingual meta steps and interactive prompts', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const helpPath = path.resolve(__dirname, '../pages/dashboard/HelpPage.tsx');
+    const content = fs.readFileSync(helpPath, 'utf-8');
+
+    expect(content).toContain("const isEn = language === 'en';");
+    expect(content).toContain("1. Create a Meta for Developers account");
+    expect(content).toContain("1. Créer un compte Meta for Developers");
+    expect(content).toContain("Reset all demo data");
+    expect(content).toContain("Réinitialiser toutes les données de démonstration");
+  });
+});

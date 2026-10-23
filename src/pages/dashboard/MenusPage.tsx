@@ -6,6 +6,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { ZinaMenuCreatorModal } from '../../components/dashboard/ZinaMenuCreatorModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -58,19 +59,15 @@ export const MenusPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <LayoutTemplate className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            {isEn ? 'No restaurant profile selected' : 'Aucun établissement sélectionné'}
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            {isEn
+        <NoActiveRestaurantCard
+          icon={<LayoutTemplate className="w-8 h-8" />}
+          title={isEn ? 'No restaurant profile selected' : 'Aucun établissement sélectionné'}
+          description={
+            isEn
               ? 'Please select or register a restaurant to manage digital menus.'
-              : 'Veuillez sélectionner ou créer votre établissement pour gérer vos cartes et menus.'}
-          </p>
-        </Card>
+              : 'Veuillez sélectionner ou créer votre établissement pour gérer vos cartes et menus.'
+          }
+        />
       </DashboardLayout>
     );
   }

@@ -19,6 +19,7 @@ import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Alert } from '../../components/common/Alert';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth, MfaEnrollmentResult } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -118,19 +119,15 @@ export const SettingsPage: React.FC = () => {
   if (!restaurant || !activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <Settings className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            {isEn ? 'No active establishment' : 'Aucun établissement actif'}
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            {isEn
-              ? 'Please select or create your establishment to configure settings.'
-              : 'Veuillez sélectionner ou créer votre établissement pour modifier ses paramètres.'}
-          </p>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<Settings className="w-8 h-8" />}
+          title={isEn ? 'No active establishment' : 'Aucun établissement actif'}
+          description={
+            isEn
+              ? 'Please select or create your establishment to configure operational settings.'
+              : 'Veuillez sélectionner ou créer votre établissement pour modifier ses paramètres.'
+          }
+        />
       </DashboardLayout>
     );
   }

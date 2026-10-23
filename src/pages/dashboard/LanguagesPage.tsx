@@ -3,6 +3,7 @@ import { Check, Globe } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -10,7 +11,8 @@ import { Product } from '../../types';
 
 export const LanguagesPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === 'en';
   const [products, setProducts] = useState<Product[]>(() =>
     activeRestaurant ? db.getProducts(activeRestaurant.id) : []
   );
@@ -32,17 +34,15 @@ export const LanguagesPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <Globe className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            Aucun établissement actif
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            Veuillez sélectionner ou créer votre établissement pour configurer vos langues et traductions.
-          </p>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<Globe className="w-8 h-8" />}
+          title={isEn ? 'No active establishment' : 'Aucun établissement actif'}
+          description={
+            isEn
+              ? 'Please select or create your establishment to manage menu languages and translations.'
+              : 'Veuillez sélectionner ou créer votre établissement pour configurer vos langues et traductions.'
+          }
+        />
       </DashboardLayout>
     );
   }
@@ -156,13 +156,13 @@ export const LanguagesPage: React.FC = () => {
                     <div className="overflow-hidden pr-2">
                       <p className="text-xs font-bold truncate">{t(p.name)}</p>
                       <p className={`text-[10px] truncate ${p.id === currentProduct.id ? 'text-white/70 dark:text-forest-dark/80' : 'text-ink-secondary dark:text-[#97A7A0]'}`}>
-                        {p.name.ar || 'Arabe manquant'}
+                        {p.name.ar || (isEn ? 'Arabic missing' : 'Arabe manquant')}
                       </p>
                     </div>
                     {p.name.ar ? (
                       <Check className={`w-3.5 h-3.5 flex-shrink-0 ${p.id === currentProduct.id ? 'text-gold dark:text-forest-dark' : 'text-status-success'}`} />
                     ) : (
-                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Arabe manquant" />
+                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title={isEn ? 'Arabic missing' : 'Arabe manquant'} />
                     )}
                   </button>
                 ))}
@@ -178,7 +178,7 @@ export const LanguagesPage: React.FC = () => {
                       {t(currentProduct.name)}
                     </h3>
                     <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-                      Perfectionnez les titres et descriptions
+                      {isEn ? 'Refine titles and descriptions across languages' : 'Perfectionnez les titres et descriptions'}
                     </p>
                   </div>
                   {savedSuccess && (

@@ -5,6 +5,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge, WhatsAppStatusBadge } from '../../components/common/Badge';
 import { Alert } from '../../components/common/Alert';
+import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
@@ -15,7 +16,8 @@ import { NotificationEvent, WhatsAppConfig } from '../../types';
 
 export const WhatsAppPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
-  const { t, formatTime } = useLanguage();
+  const { language, t, formatTime } = useLanguage();
+  const isEn = language === 'en';
   const [config, setConfig] = useState<WhatsAppConfig | null>(() =>
     activeRestaurant
       ? (activeRestaurant.whatsappConfig || {
@@ -77,17 +79,15 @@ export const WhatsAppPage: React.FC = () => {
   if (!activeRestaurant) {
     return (
       <DashboardLayout>
-        <Card className="p-8 text-center space-y-4 max-w-xl mx-auto my-12 border-border-subtle dark:border-[#233831]">
-          <div className="w-12 h-12 rounded-2xl bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center mx-auto">
-            <MessageSquare className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-forest dark:text-[#F0F4F2]">
-            Aucun établissement actif
-          </h2>
-          <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
-            Veuillez sélectionner ou créer votre établissement pour configurer les notifications WhatsApp en direct vers la cuisine.
-          </p>
-        </Card>
+        <NoActiveRestaurantCard
+          icon={<MessageSquare className="w-8 h-8" />}
+          title={isEn ? 'No active establishment' : 'Aucun établissement actif'}
+          description={
+            isEn
+              ? 'Please select or create your establishment to configure instant WhatsApp kitchen order dispatch.'
+              : 'Veuillez sélectionner ou créer votre établissement pour configurer les notifications WhatsApp en direct vers la cuisine.'
+          }
+        />
       </DashboardLayout>
     );
   }

@@ -35,7 +35,7 @@ export const ReviewInviteModal: React.FC<ReviewInviteModalProps> = ({
         <button
           onClick={onClose}
           className="absolute right-4 top-4 p-1.5 rounded-full text-ink-secondary dark:text-dark-muted hover:bg-ivory dark:hover:bg-dark-surface"
-          aria-label="Fermer"
+          aria-label={isEn ? "Close" : "Fermer"}
         >
           <X className="w-5 h-5" />
         </button>

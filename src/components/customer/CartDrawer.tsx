@@ -22,7 +22,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   availableProducts
 }) => {
   const navigate = useNavigate();
-  const { t, formatCurrency } = useLanguage();
+  const { t, formatCurrency, language } = useLanguage();
   const {
     items,
     orderType,
@@ -228,7 +228,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       <button
                         onClick={() => updateQuantity(item.cartItemId, -1)}
                         className="p-1 text-ink-secondary hover:text-forest"
-                        aria-label="Diminuer la quantité"
+                        aria-label={language === 'en' ? "Decrease quantity" : "Diminuer la quantité"}
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -236,7 +236,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       <button
                         onClick={() => updateQuantity(item.cartItemId, 1)}
                         className="p-1 text-ink-secondary hover:text-forest"
-                        aria-label="Augmenter la quantité"
+                        aria-label={language === 'en' ? "Increase quantity" : "Augmenter la quantité"}
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -245,7 +245,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <button
                       onClick={() => removeItem(item.cartItemId)}
                       className="p-1.5 text-ink-secondary hover:text-status-error"
-                      aria-label="Supprimer cet article"
+                      aria-label={language === 'en' ? "Remove this item" : "Supprimer cet article"}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

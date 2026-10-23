@@ -9,7 +9,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
-  const { t, formatCurrency, dir } = useLanguage();
+  const { t, formatCurrency, dir, language } = useLanguage();
 
   const title = t(product.name);
   const description = t(product.description);
@@ -76,7 +76,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
             <button
               type="button"
               className="px-3 py-1.5 rounded-xl bg-forest hover:bg-forest-hover text-white text-xs font-bold flex items-center gap-1 shadow-soft transition-transform active:scale-95"
-              aria-label={`Ajouter ${title} à la commande`}
+              aria-label={language === 'en' ? `Add ${title} to order` : `Ajouter ${title} à la commande`}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t('customer.addToOrder')}</span>

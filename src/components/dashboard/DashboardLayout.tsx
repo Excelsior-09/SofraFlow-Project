@@ -98,10 +98,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-bold text-ink-main dark:text-[#F0F4F2] truncate">
-                  {activeRestaurant?.name || 'My Restaurant'}
+                  {activeRestaurant?.name || (isEn ? 'No active restaurant' : 'Aucun établissement')}
                 </p>
                 <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] truncate">
-                  {activeRestaurant ? `${activeRestaurant.city || 'Maroc'}, ${activeRestaurant.country || 'Maroc'}` : 'Aucun établissement actif'}
+                  {activeRestaurant
+                    ? `${activeRestaurant.city || (isEn ? 'Morocco' : 'Maroc')}, ${activeRestaurant.country || (isEn ? 'Morocco' : 'Maroc')}`
+                    : (isEn ? 'No active establishment' : 'Aucun établissement actif')}
                 </p>
               </div>
             </div>
@@ -217,7 +219,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="lg:hidden p-2 rounded-xl text-ink-main dark:text-[#F0F4F2] hover:bg-ivory dark:hover:bg-[#152520] border border-border-subtle dark:border-[#233831]"
-              aria-label="Ouvrir le menu"
+              aria-label={isEn ? "Open menu" : "Ouvrir le menu"}
             >
               <MenuIcon className="w-5 h-5" />
             </button>
@@ -257,7 +259,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <Link
               to="/app/orders"
               className="relative p-2 rounded-xl text-ink-secondary dark:text-[#97A7A0] hover:text-forest dark:hover:text-gold hover:bg-ivory dark:hover:bg-[#152520] transition-colors"
-              aria-label="Voir les commandes en direct"
+              aria-label={isEn ? "View live orders" : "Voir les commandes en direct"}
             >
               <Bell className="w-5 h-5" />
               {newOrdersCount > 0 && (
