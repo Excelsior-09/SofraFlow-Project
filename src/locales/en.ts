@@ -8,6 +8,8 @@ export const en = {
     edit: 'Edit',
     create: 'Create',
     back: 'Back',
+    home: 'Home',
+    backToHome: 'Back to home',
     close: 'Close',
     search: 'Search',
     searchPlaceholder: 'Search…',
@@ -91,6 +93,7 @@ export const en = {
     userProfile: 'User Profile'
   },
   auth: {
+    backToHome: 'Back to home',
     welcomeBack: 'Welcome back',
     signInTitle: 'Sign in to your SOFRAFLOW workspace',
     signInSubtitle: 'Manage digital QR menus, live orders, and kitchen WhatsApp dispatch.',

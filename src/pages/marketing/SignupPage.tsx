@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User, ArrowRight, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
+import { BackToHomeButton } from '../../components/common/BackToHomeButton';
 import { LanguageSelector } from '../../components/common/LanguageSelector';
 import { ThemeSwitcher } from '../../components/common/ThemeSwitcher';
 import { SEO } from '../../components/common/SEO';
@@ -139,12 +140,13 @@ export const SignupPage: React.FC = () => {
       <div className="absolute top-0 right-1/4 -mt-20 w-96 h-96 rounded-full bg-brand-orange/10 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 -mb-20 w-80 h-80 rounded-full bg-brand-navy/10 blur-3xl pointer-events-none" />
 
-      {/* Top Bar with Logo, ThemeSwitcher & LanguageSelector */}
-      <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
-        <Link to="/">
-          <Logo showTagline={false} size="sm" />
-        </Link>
-        <div className="flex items-center gap-3">
+      {/* Top Bar with Back to Home, Logo, ThemeSwitcher & LanguageSelector */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 flex items-center justify-between z-20">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <BackToHomeButton compactOnMobile />
+          <Logo showTagline={false} size="sm" linkTo="/" />
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeSwitcher compact />
           <LanguageSelector variant="compact" />
         </div>
@@ -188,6 +190,9 @@ export const SignupPage: React.FC = () => {
                 >
                   {isEn ? 'Return to Sign In' : 'Aller à la page de connexion'}
                 </Link>
+                <div className="pt-1 text-center">
+                  <BackToHomeButton variant="link" />
+                </div>
               </div>
             </div>
           ) : (
@@ -360,6 +365,11 @@ export const SignupPage: React.FC = () => {
                   {isEn ? 'Sign in here' : 'Connectez-vous ici'}
                 </Link>
               </p>
+
+              {/* Secondary Back to Home Link */}
+              <div className="pt-1 text-center">
+                <BackToHomeButton variant="link" />
+              </div>
             </>
           )}
 

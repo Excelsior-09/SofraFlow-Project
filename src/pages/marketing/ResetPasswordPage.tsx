@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Check, X } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
+import { BackToHomeButton } from '../../components/common/BackToHomeButton';
 import { LanguageSelector } from '../../components/common/LanguageSelector';
 import { ThemeSwitcher } from '../../components/common/ThemeSwitcher';
 import { SEO } from '../../components/common/SEO';
@@ -121,12 +122,13 @@ export const ResetPasswordPage: React.FC = () => {
         noindex={true}
       />
 
-      {/* Top Bar with Logo, ThemeSwitcher & LanguageSelector */}
-      <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
-        <Link to="/">
-          <Logo showTagline={false} size="sm" />
-        </Link>
-        <div className="flex items-center gap-3">
+      {/* Top Bar with Back to Home, Logo, ThemeSwitcher & LanguageSelector */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 flex items-center justify-between z-20">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <BackToHomeButton compactOnMobile />
+          <Logo showTagline={false} size="sm" linkTo="/" />
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeSwitcher compact />
           <LanguageSelector variant="compact" />
         </div>

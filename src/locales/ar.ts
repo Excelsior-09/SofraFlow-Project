@@ -8,6 +8,8 @@ export const ar = {
     edit: 'تعديل',
     create: 'إنشاء',
     back: 'رجوع',
+    home: 'الرئيسية',
+    backToHome: 'العودة للرئيسية',
     close: 'إغلاق',
     search: 'بحث',
     searchPlaceholder: 'بحث…',
