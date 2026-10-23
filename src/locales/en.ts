@@ -87,7 +87,8 @@ export const en = {
     about: 'About',
     contact: 'Contact',
     startFree: 'Start Free',
-    goToDashboard: 'Go to Dashboard'
+    goToDashboard: 'Go to Dashboard',
+    userProfile: 'User Profile'
   },
   auth: {
     welcomeBack: 'Welcome back',
@@ -685,6 +686,52 @@ export const en = {
     suggestionsLabel: 'Try asking Zina:',
     clearChat: 'Reset conversation',
     disclaimer: 'Interactive front-end demonstration of the conversational AI ordering assistant.'
+  },
+  profile: {
+    pageTitle: 'User Profile & Account',
+    pageSubtitle: 'Manage your personal information, contact phone, and security credentials.',
+    personalInfoTitle: 'Personal Information',
+    personalInfoSubtitle: 'Update your display name and contact phone number across SOFRAFLOW.',
+    fullName: 'Full Name',
+    fullNamePlaceholder: 'e.g. Tariq Benjelloun',
+    email: 'Email Address',
+    emailReadOnlyHint: 'Email cannot be changed directly for security and authentication consistency.',
+    phone: 'Phone Number',
+    phonePlaceholder: 'e.g. +212 6 61 23 45 67',
+    role: 'Account Role',
+    memberSince: 'Member Since',
+    saveProfileBtn: 'Save Changes',
+    savingProfile: 'Saving changes…',
+    profileUpdated: 'Your profile information has been successfully updated.',
+    changePasswordTitle: 'Change Password',
+    changePasswordSubtitle: 'Protect your account with a strong, verified password.',
+    currentPassword: 'Current Password',
+    currentPasswordPlaceholder: 'Enter your current password',
+    newPassword: 'New Password',
+    newPasswordPlaceholder: 'Enter your new password (min. 8 characters)',
+    confirmPassword: 'Confirm New Password',
+    confirmPasswordPlaceholder: 'Confirm your new password',
+    updatePasswordBtn: 'Update Password',
+    updatingPassword: 'Verifying & updating password…',
+    passwordUpdated: 'Your password has been changed successfully.',
+    strengthTitle: 'Password Requirements:',
+    minChars: 'At least 8 characters',
+    uppercase: 'At least one uppercase letter (A-Z)',
+    lowercase: 'At least one lowercase letter (a-z)',
+    number: 'At least one number (0-9)',
+    specialChar: 'At least one special character (!@#$%^&*)',
+    passwordsMatch: 'Passwords match',
+    errors: {
+      loadProfileFailed: 'Failed to load user profile. Please refresh or try again.',
+      currentPasswordRequired: 'Please enter your current password.',
+      incorrectCurrentPassword: 'The current password you entered is incorrect.',
+      passwordLength: 'New password must contain at least 8 characters.',
+      passwordRequirements: 'New password does not meet the security requirements.',
+      passwordMismatch: 'The confirmation password does not match the new password.',
+      sameAsCurrent: 'The new password cannot be the same as your current password.',
+      nameTooShort: 'Full name must contain at least 2 characters.',
+      updateFailed: 'Failed to save changes. Please try again.'
+    }
   }
 };
 

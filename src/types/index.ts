@@ -199,10 +199,14 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  phone?: string;
+  avatarUrl?: string;
   restaurantId: string;
   role: 'admin' | 'owner' | 'manager' | 'staff';
   preferredLanguage?: LanguageCode;
   preferredTheme?: 'light' | 'dark' | 'system';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface QrCodeConfig {

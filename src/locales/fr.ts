@@ -87,7 +87,8 @@ export const fr = {
     about: 'À propos',
     contact: 'Contact',
     startFree: 'Essai gratuit',
-    goToDashboard: 'Accéder au tableau de bord'
+    goToDashboard: 'Accéder au tableau de bord',
+    userProfile: 'Mon Profil'
   },
   auth: {
     welcomeBack: 'Bon retour parmi nous',
@@ -685,6 +686,52 @@ export const fr = {
     suggestionsLabel: 'Questions fréquentes suggérées :',
     clearChat: 'Réinitialiser la conversation',
     disclaimer: 'Démonstration front-end interactive du module d’assistance culinaire par intelligence artificielle.'
+  },
+  profile: {
+    pageTitle: 'Profil Utilisateur & Compte',
+    pageSubtitle: 'Gérez vos informations personnelles, votre numéro de contact et vos identifiants de sécurité.',
+    personalInfoTitle: 'Informations Personnelles',
+    personalInfoSubtitle: 'Mettez à jour votre nom d’affichage et votre numéro de téléphone dans SOFRAFLOW.',
+    fullName: 'Nom Complet',
+    fullNamePlaceholder: 'ex. Tariq Benjelloun',
+    email: 'Adresse E-mail',
+    emailReadOnlyHint: 'L’adresse e-mail ne peut pas être modifiée directement pour des raisons de sécurité et d’authentification.',
+    phone: 'Numéro de Téléphone',
+    phonePlaceholder: 'ex. +212 6 61 23 45 67',
+    role: 'Rôle du Compte',
+    memberSince: 'Membre Depuis',
+    saveProfileBtn: 'Enregistrer les Modifications',
+    savingProfile: 'Enregistrement en cours…',
+    profileUpdated: 'Vos informations de profil ont été mises à jour avec succès.',
+    changePasswordTitle: 'Modifier le Mot de Passe',
+    changePasswordSubtitle: 'Protégez votre compte avec un mot de passe robuste et vérifié.',
+    currentPassword: 'Mot de Passe Actuel',
+    currentPasswordPlaceholder: 'Entrez votre mot de passe actuel',
+    newPassword: 'Nouveau Mot de Passe',
+    newPasswordPlaceholder: 'Entrez votre nouveau mot de passe (min. 8 caractères)',
+    confirmPassword: 'Confirmer le Nouveau Mot de Passe',
+    confirmPasswordPlaceholder: 'Confirmez votre nouveau mot de passe',
+    updatePasswordBtn: 'Mettre à Jour le Mot de Passe',
+    updatingPassword: 'Vérification et mise à jour…',
+    passwordUpdated: 'Votre mot de passe a été modifié avec succès.',
+    strengthTitle: 'Exigences de Sécurité :',
+    minChars: 'Au moins 8 caractères',
+    uppercase: 'Au moins une lettre majuscule (A-Z)',
+    lowercase: 'Au moins une lettre minuscule (a-z)',
+    number: 'Au moins un chiffre (0-9)',
+    specialChar: 'Au moins un caractère spécial (!@#$%^&*)',
+    passwordsMatch: 'Les mots de passe correspondent',
+    errors: {
+      loadProfileFailed: 'Impossible de charger le profil utilisateur. Veuillez actualiser ou réessayer.',
+      currentPasswordRequired: 'Veuillez saisir votre mot de passe actuel.',
+      incorrectCurrentPassword: 'Le mot de passe actuel saisi est incorrect.',
+      passwordLength: 'Le nouveau mot de passe doit contenir au moins 8 caractères.',
+      passwordRequirements: 'Le nouveau mot de passe ne respecte pas les critères de sécurité requis.',
+      passwordMismatch: 'Le mot de passe de confirmation ne correspond pas au nouveau mot de passe.',
+      sameAsCurrent: 'Le nouveau mot de passe ne peut pas être identique au mot de passe actuel.',
+      nameTooShort: 'Le nom complet doit contenir au moins 2 caractères.',
+      updateFailed: 'Échec de l’enregistrement des modifications. Veuillez réessayer.'
+    }
   }
 };
 

@@ -36,6 +36,7 @@ import { LanguagesPage } from './pages/dashboard/LanguagesPage';
 import { WhatsAppPage } from './pages/dashboard/WhatsAppPage';
 import { AnalyticsPage } from './pages/dashboard/AnalyticsPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
+import { ProfilePage } from './pages/dashboard/ProfilePage';
 import { BillingPage } from './pages/dashboard/BillingPage';
 import { HelpPage } from './pages/dashboard/HelpPage';
 
@@ -93,6 +94,7 @@ export function App() {
                   <Route path="/app/whatsapp" element={<WhatsAppPage />} />
                   <Route path="/app/analytics" element={<AnalyticsPage />} />
                   <Route path="/app/settings" element={<SettingsPage />} />
+                  <Route path="/app/profile" element={<ProfilePage />} />
                   <Route path="/app/billing" element={<BillingPage />} />
                   <Route path="/app/help" element={<HelpPage />} />
                 </Route>

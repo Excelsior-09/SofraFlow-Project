@@ -19,7 +19,8 @@ import {
   X,
   ChevronDown,
   Store,
-  Bell
+  Bell,
+  User
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +53,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     { name: t('navigation.whatsappApi'), href: '/app/whatsapp', icon: MessageSquare },
     { name: t('navigation.salesAnalytics'), href: '/app/analytics', icon: BarChart3 },
     { name: t('navigation.restaurantSettings'), href: '/app/settings', icon: Settings },
+    { name: t('navigation.userProfile'), href: '/app/profile', icon: User },
     { name: t('navigation.subscriptionBilling'), href: '/app/billing', icon: CreditCard },
     { name: t('navigation.setupGuideHelp'), href: '/app/help', icon: HelpCircle }
   ];
@@ -193,14 +195,23 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           </Link>
 
           {/* User profile & logout */}
-          <div className="flex items-center justify-between pt-1 text-xs">
-            <div className="overflow-hidden">
-              <p className="font-semibold text-ink-main dark:text-[#F0F4F2] truncate">{user?.fullName || 'Manager'}</p>
-              <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] truncate">{user?.email || 'owner@restaurant.ma'}</p>
-            </div>
+          <div className="flex items-center justify-between pt-1 text-xs gap-2">
+            <Link
+              to="/app/profile"
+              className="flex items-center gap-2.5 overflow-hidden p-1.5 -ml-1.5 rounded-xl hover:bg-ivory dark:hover:bg-[#152520] transition-colors flex-1"
+              title={t('navigation.userProfile')}
+            >
+              <div className="w-8 h-8 rounded-full bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center font-bold text-xs flex-shrink-0 border border-forest/20 dark:border-gold/30">
+                {(user?.fullName || user?.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="overflow-hidden text-left">
+                <p className="font-semibold text-ink-main dark:text-[#F0F4F2] truncate">{user?.fullName || 'Manager'}</p>
+                <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] truncate">{user?.email || 'owner@restaurant.ma'}</p>
+              </div>
+            </Link>
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-ink-secondary dark:text-[#97A7A0] hover:text-status-error hover:bg-status-error-bg dark:hover:bg-[#2E1414] transition-colors"
+              className="p-1.5 rounded-lg text-ink-secondary dark:text-[#97A7A0] hover:text-status-error hover:bg-status-error-bg dark:hover:bg-[#2E1414] transition-colors flex-shrink-0"
               title={t('navigation.signOut')}
               aria-label={t('navigation.signOut')}
             >
@@ -323,6 +334,19 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
               </nav>
 
               <div className="p-4 border-t border-border-subtle dark:border-[#233831] space-y-2">
+                <Link
+                  to="/app/profile"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="w-full p-2.5 rounded-xl bg-ivory dark:bg-[#152520] border border-border-subtle dark:border-[#233831] flex items-center gap-2.5 text-xs font-semibold text-ink-main dark:text-[#F0F4F2]"
+                >
+                  <div className="w-7 h-7 rounded-full bg-forest/10 dark:bg-gold/15 text-forest dark:text-gold flex items-center justify-center font-bold text-xs flex-shrink-0">
+                    {(user?.fullName || user?.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="overflow-hidden flex-1 text-left">
+                    <p className="truncate">{user?.fullName || 'Manager'}</p>
+                    <p className="text-[10px] text-ink-secondary dark:text-[#97A7A0] truncate font-normal">{user?.email}</p>
+                  </div>
+                </Link>
                 <Link
                   to={publicMenuUrl}
                   target="_blank"

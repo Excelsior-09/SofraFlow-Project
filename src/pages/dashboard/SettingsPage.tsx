@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Save,
   Settings,
@@ -13,7 +14,8 @@ import {
   Building,
   Smartphone,
   Copy,
-  Check
+  Check,
+  User
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
@@ -128,6 +130,15 @@ export const SettingsPage: React.FC = () => {
               : 'Veuillez sélectionner ou créer votre établissement pour modifier ses paramètres.'
           }
         />
+        <div className="mt-4 flex justify-center">
+          <Link
+            to="/app/profile"
+            className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl bg-forest dark:bg-gold text-white dark:text-forest-dark hover:opacity-95 shadow-soft transition-all"
+          >
+            <User className="w-4 h-4" />
+            <span>{isEn ? 'Manage User Profile & Password' : 'Gérer Mon Profil & Mot de Passe'}</span>
+          </Link>
+        </div>
       </DashboardLayout>
     );
   }
@@ -288,6 +299,14 @@ export const SettingsPage: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
               )}
             </button>
+
+            <Link
+              to="/app/profile"
+              className="pb-3 px-3 text-xs sm:text-sm font-bold border-b-2 border-transparent text-ink-secondary dark:text-[#97A7A0] hover:text-forest dark:hover:text-[#F0F4F2] flex items-center gap-2 transition-colors ml-auto"
+            >
+              <User className="w-4 h-4" />
+              <span>{isEn ? 'User Profile & Password' : 'Profil Utilisateur & Mot de Passe'}</span>
+            </Link>
           </div>
         </div>
 

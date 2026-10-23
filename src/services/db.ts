@@ -962,6 +962,19 @@ class DatabaseService {
     return updated;
   }
 
+  public updateUserProfile(updates: { fullName?: string; phone?: string; preferredLanguage?: 'en' | 'fr' }): User | null {
+    const user = this.getCurrentUser();
+    if (!user) return null;
+    const updated: User = {
+      ...user,
+      fullName: updates.fullName !== undefined ? updates.fullName : user.fullName,
+      phone: updates.phone !== undefined ? updates.phone : user.phone,
+      preferredLanguage: updates.preferredLanguage !== undefined ? updates.preferredLanguage : user.preferredLanguage
+    };
+    this.setCurrentUser(updated);
+    return updated;
+  }
+
   public getActiveRestaurantId(): string {
     return appStorage.getItem(STORAGE_KEYS.ACTIVE_RESTAURANT_ID) || 'rest_marrakech_01';
   }

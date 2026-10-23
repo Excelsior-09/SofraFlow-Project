@@ -16,10 +16,12 @@ import {
 export interface UserProfile {
   id: string;
   fullName: string;
+  phone?: string;
   avatarUrl?: string;
   role: 'admin' | 'owner' | 'manager' | 'staff';
   preferredLanguage: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 /**
@@ -47,17 +49,22 @@ export const supabaseService = {
     return {
       id: data.id,
       fullName: data.full_name || '',
+      phone: data.phone || '',
       avatarUrl: data.avatar_url || '',
       role: data.role || 'owner',
       preferredLanguage: data.preferred_language || 'fr',
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   },
 
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<boolean> {
     if (!isSupabaseConfigured) return false;
-    const payload: Record<string, any> = {};
+    const payload: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    };
     if (updates.fullName !== undefined) payload.full_name = updates.fullName;
+    if (updates.phone !== undefined) payload.phone = updates.phone;
     if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
     if (updates.preferredLanguage !== undefined) payload.preferred_language = updates.preferredLanguage;
 
@@ -68,9 +75,48 @@ export const supabaseService = {
 
     if (error) {
       console.error('[Supabase] Error updating profile:', error.message);
-      return false;
+      throw error;
     }
     return true;
+  },
+
+  async createProfileIfMissing(
+    userId: string,
+    initialData: { fullName: string; phone?: string; email?: string }
+  ): Promise<UserProfile | null> {
+    if (!isSupabaseConfigured) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          full_name: initialData.fullName || (initialData.email ? initialData.email.split('@')[0] : 'Owner'),
+          phone: initialData.phone || null,
+          role: 'owner',
+          preferred_language: 'fr',
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'id' }
+      )
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Supabase] Upsert profile notice:', error.message);
+      return null;
+    }
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      fullName: data.full_name || '',
+      phone: data.phone || '',
+      avatarUrl: data.avatar_url || '',
+      role: data.role || 'owner',
+      preferredLanguage: data.preferred_language || 'fr',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   },
 
   // ------------------------------------------------------------------

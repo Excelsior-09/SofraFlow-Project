@@ -46,6 +46,16 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  updateUserProfile: (updates: {
+    fullName: string;
+    phone?: string;
+    preferredLanguage?: 'en' | 'fr';
+  }) => Promise<{ success: boolean; error?: string }>;
+  changePasswordWithVerification: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  reloadProfile: () => Promise<UserProfile | null>;
   switchRestaurant: (restaurantId: string) => void;
   createBusiness: (params: {
     name: string;
@@ -137,8 +147,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: authUserId,
         email: authUserEmail,
         fullName: prof?.fullName || metaFullName || authUserEmail.split('@')[0],
+        phone: prof?.phone || '',
+        avatarUrl: prof?.avatarUrl || '',
         restaurantId: matched?.id || '',
-        role: prof?.role || 'owner'
+        role: prof?.role || 'owner',
+        preferredLanguage: (prof?.preferredLanguage as any) || 'fr'
       });
       setIsDemoMode(false);
     } catch (err) {
@@ -284,7 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   session.user.email || '',
                   session.user.user_metadata?.full_name
                 ).catch(err => console.warn('[Auth] Background load error:', err));
-                loadMfaStatus().catch(() => {});
+                loadMfaStatus().catch(() => { });
               }
             }, 0);
           }
@@ -656,7 +669,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Mirror to local storage for offline resilience
       try {
         db.createRestaurant(created);
-      } catch {}
+      } catch { }
 
       return created;
     }
@@ -755,6 +768,218 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Update User Profile (Full Name and Phone)
+  const updateUserProfile = async (updates: {
+    fullName: string;
+    phone?: string;
+    preferredLanguage?: 'en' | 'fr';
+  }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const trimmedName = updates.fullName?.trim() || '';
+      if (!trimmedName || trimmedName.length < 2) {
+        return {
+          success: false,
+          error: 'Le nom complet doit comporter au moins 2 caractères.'
+        };
+      }
+
+      if (isSupabaseConfigured) {
+        // ALWAYS use the authenticated user ID directly from Supabase Auth
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !authData?.user) {
+          return {
+            success: false,
+            error: 'Session expirée. Veuillez vous reconnecter.'
+          };
+        }
+
+        const verifiedUserId = authData.user.id;
+        const cleanPhone = updates.phone?.trim() || '';
+
+        // 1. Update public.profiles table
+        await supabaseService.updateProfile(verifiedUserId, {
+          fullName: trimmedName,
+          phone: cleanPhone,
+          preferredLanguage: updates.preferredLanguage
+        });
+
+        // 2. Synchronize Supabase Auth user metadata
+        await supabase.auth.updateUser({
+          data: {
+            full_name: trimmedName,
+            name: trimmedName,
+            phone: cleanPhone
+          }
+        });
+
+        // 3. Refresh in-memory state
+        const freshProfile = await supabaseService.getProfile(verifiedUserId);
+        if (freshProfile) {
+          setProfile(freshProfile);
+        }
+
+        setUser(prev =>
+          prev
+            ? {
+              ...prev,
+              fullName: trimmedName,
+              phone: cleanPhone,
+              preferredLanguage: (updates.preferredLanguage as any) || prev.preferredLanguage
+            }
+            : null
+        );
+      } else {
+        // Mock / Offline mode
+        const updated = db.updateUserProfile({
+          fullName: trimmedName,
+          phone: updates.phone?.trim(),
+          preferredLanguage: updates.preferredLanguage
+        });
+        if (updated) {
+          setUser(updated);
+          setProfile({
+            id: updated.id,
+            fullName: updated.fullName,
+            phone: updated.phone,
+            role: updated.role,
+            preferredLanguage: updated.preferredLanguage || 'fr'
+          });
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('[AuthContext] updateUserProfile error:', err);
+      return {
+        success: false,
+        error: err?.message || 'Échec de la mise à jour du profil.'
+      };
+    }
+  };
+
+  // Change Password with Secure Supabase Auth Current Password Verification
+  const changePasswordWithVerification = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!currentPassword) {
+        return {
+          success: false,
+          error: 'Veuillez saisir votre mot de passe actuel.'
+        };
+      }
+
+      if (!newPassword || newPassword.length < 8) {
+        return {
+          success: false,
+          error: 'Le nouveau mot de passe doit comporter au moins 8 caractères.'
+        };
+      }
+
+      const hasUpper = /[A-Z]/.test(newPassword);
+      const hasLower = /[a-z]/.test(newPassword);
+      const hasNum = /[0-9]/.test(newPassword);
+      const hasSym = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+
+      if (!hasUpper || !hasLower || !hasNum || !hasSym) {
+        return {
+          success: false,
+          error:
+            'Le nouveau mot de passe doit comporter au moins une majuscule, une minuscule, un chiffre et un caractère spécial.'
+        };
+      }
+
+      if (currentPassword === newPassword) {
+        return {
+          success: false,
+          error: 'Le nouveau mot de passe ne peut pas être identique à votre mot de passe actuel.'
+        };
+      }
+
+      if (isSupabaseConfigured) {
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !authData?.user || !authData.user.email) {
+          return {
+            success: false,
+            error: 'Session expirée. Veuillez vous reconnecter.'
+          };
+        }
+
+        // STEP 1: Verify current password securely through Supabase Auth
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: authData.user.email,
+          password: currentPassword
+        });
+
+        if (signInErr) {
+          return {
+            success: false,
+            error: 'Le mot de passe actuel est incorrect. Veuillez vérifier votre saisie.'
+          };
+        }
+
+        // STEP 2: Update password using authenticated session
+        const { error: updateErr } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+
+        if (updateErr) {
+          return {
+            success: false,
+            error: updateErr.message
+          };
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('[AuthContext] changePasswordWithVerification error:', err);
+      return {
+        success: false,
+        error: err?.message || 'Échec de la mise à jour du mot de passe.'
+      };
+    }
+  };
+
+  // Reload profile on demand
+  const reloadProfile = useCallback(async (): Promise<UserProfile | null> => {
+    if (!user) return null;
+    if (isSupabaseConfigured) {
+      const fresh = await supabaseService.getProfile(user.id);
+      if (fresh) {
+        setProfile(fresh);
+        setUser(prev =>
+          prev
+            ? {
+              ...prev,
+              fullName: fresh.fullName || prev.fullName,
+              phone: fresh.phone || prev.phone,
+              role: fresh.role || prev.role,
+              preferredLanguage: (fresh.preferredLanguage as any) || prev.preferredLanguage
+            }
+            : null
+        );
+      }
+      return fresh;
+    } else {
+      const local = db.getCurrentUser();
+      if (local) {
+        const prof: UserProfile = {
+          id: local.id,
+          fullName: local.fullName,
+          phone: local.phone,
+          role: local.role,
+          preferredLanguage: local.preferredLanguage || 'fr'
+        };
+        setProfile(prof);
+        setUser(local);
+        return prof;
+      }
+      return null;
+    }
+  }, [user]);
+
   // Force Refresh
   const refreshState = async () => {
     if (!isSupabaseConfigured) {
@@ -802,6 +1027,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         resetPassword,
         updatePassword,
+        updateUserProfile,
+        changePasswordWithVerification,
+        reloadProfile,
         switchRestaurant,
         createBusiness,
         refreshState
