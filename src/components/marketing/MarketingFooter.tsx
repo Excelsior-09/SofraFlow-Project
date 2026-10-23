@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../common/Logo';
-import { ShieldCheck, Globe, ArrowRight, Heart, Sparkles } from 'lucide-react';
+import { ShieldCheck, Globe, ArrowRight, Heart, Sparkles, Mail, Phone } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageSelector } from '../common/LanguageSelector';
 import { ThemeSwitcher } from '../common/ThemeSwitcher';
+import { OFFICIAL_CONTACT } from '../../data/contactConfig';
 
 export const MarketingFooter: React.FC = () => {
   const { language } = useLanguage();
@@ -101,9 +102,29 @@ export const MarketingFooter: React.FC = () => {
                 </a>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-orange-400 transition-colors">
+                <Link to="/contact" className="hover:text-orange-400 transition-colors font-medium">
                   {isEn ? 'Morocco Support & Contact' : 'Support & Contact au Maroc'}
                 </Link>
+              </li>
+              <li>
+                <a
+                  href={OFFICIAL_CONTACT.mailto}
+                  className="hover:text-orange-400 transition-colors flex items-center gap-2 text-xs text-white/70"
+                  aria-label={isEn ? `Email ${OFFICIAL_CONTACT.email}` : `Envoyer un email à ${OFFICIAL_CONTACT.email}`}
+                >
+                  <Mail className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                  <span>{OFFICIAL_CONTACT.email}</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href={OFFICIAL_CONTACT.phoneTel}
+                  className="hover:text-orange-400 transition-colors flex items-center gap-2 text-xs text-white/70"
+                  aria-label={isEn ? `Call ${OFFICIAL_CONTACT.phoneDisplay}` : `Appeler ${OFFICIAL_CONTACT.phoneDisplay}`}
+                >
+                  <Phone className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                  <span>{OFFICIAL_CONTACT.phoneDisplay}</span>
+                </a>
               </li>
             </ul>
           </div>

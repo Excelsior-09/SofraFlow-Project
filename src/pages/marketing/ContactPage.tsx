@@ -8,6 +8,7 @@ import { Card } from '../../components/common/Card';
 import { Alert } from '../../components/common/Alert';
 import { useLanguage } from '../../context/LanguageContext';
 import { analytics } from '../../services/analytics';
+import { OFFICIAL_CONTACT } from '../../data/contactConfig';
 
 export const ContactPage: React.FC = () => {
   const { language } = useLanguage();
@@ -100,7 +101,7 @@ export const ContactPage: React.FC = () => {
                 </div>
 
                 <a
-                  href="https://wa.me/212524381200?text=Bonjour,%20je%20souhaite%20des%20renseignements%20sur%20SOFRAFLOW"
+                  href={OFFICIAL_CONTACT.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2"
@@ -110,33 +111,51 @@ export const ContactPage: React.FC = () => {
                 </a>
 
                 <div className="space-y-4 pt-4 border-t border-white/10 text-xs text-white/80">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#e35d25]">
+                  <a
+                    href={OFFICIAL_CONTACT.phoneTel}
+                    className="flex items-center gap-3 group hover:text-white transition-colors"
+                    aria-label={isEn ? `Call ${OFFICIAL_CONTACT.phoneDisplay}` : `Appeler ${OFFICIAL_CONTACT.phoneDisplay}`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-[#e35d25]/20 flex items-center justify-center text-[#e35d25] transition-colors shrink-0">
                       <Phone className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="block font-bold text-white">+212 (0) 524 38 12 00</span>
-                      <span className="text-[10px] text-white/50">{isEn ? 'Monday - Sunday, 9am - 8pm' : 'Du lundi au dimanche, 9h - 20h'}</span>
+                      <span className="block font-bold text-white group-hover:text-orange-300 transition-colors">
+                        {OFFICIAL_CONTACT.phoneDisplay}
+                      </span>
+                      <span className="text-[10px] text-white/50">
+                        {isEn ? OFFICIAL_CONTACT.hours.en : OFFICIAL_CONTACT.hours.fr}
+                      </span>
                     </div>
-                  </div>
+                  </a>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#e35d25]">
+                  <a
+                    href={OFFICIAL_CONTACT.mailto}
+                    className="flex items-center gap-3 group hover:text-white transition-colors"
+                    aria-label={isEn ? `Email ${OFFICIAL_CONTACT.email}` : `Envoyer un email à ${OFFICIAL_CONTACT.email}`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-[#e35d25]/20 flex items-center justify-center text-[#e35d25] transition-colors shrink-0">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="block font-bold text-white">support@sofraflow.com</span>
-                      <span className="text-[10px] text-white/50">{isEn ? 'Response within 2 hours' : 'Réponse sous 2 heures'}</span>
+                      <span className="block font-bold text-white group-hover:text-orange-300 transition-colors">
+                        {OFFICIAL_CONTACT.email}
+                      </span>
+                      <span className="text-[10px] text-white/50">
+                        {isEn ? OFFICIAL_CONTACT.responseNotice.en : OFFICIAL_CONTACT.responseNotice.fr}
+                      </span>
                     </div>
-                  </div>
+                  </a>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#e35d25]">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#e35d25] shrink-0">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="block font-bold text-white">Casablanca &amp; Marrakech</span>
-                      <span className="text-[10px] text-white/50">{isEn ? 'Kingdom of Morocco' : 'Royaume du Maroc'}</span>
+                      <span className="block font-bold text-white">{OFFICIAL_CONTACT.cities}</span>
+                      <span className="text-[10px] text-white/50">
+                        {isEn ? OFFICIAL_CONTACT.country.en : OFFICIAL_CONTACT.country.fr}
+                      </span>
                     </div>
                   </div>
                 </div>
