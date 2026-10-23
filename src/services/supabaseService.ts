@@ -12,6 +12,7 @@ import {
   MoroccanPaymentMethod,
   NotificationEvent
 } from '../types';
+import { normalizePhoneNumber } from '../utils/phoneValidation';
 
 export interface UserProfile {
   id: string;
@@ -58,13 +59,54 @@ export const supabaseService = {
     };
   },
 
+  async isPhoneTaken(phone: string, excludeUserId?: string): Promise<boolean> {
+    if (!isSupabaseConfigured || !phone) return false;
+    const normalized = normalizePhoneNumber(phone);
+    if (!normalized) return false;
+
+    try {
+      let query = supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', normalized);
+
+      if (excludeUserId) {
+        query = query.neq('id', excludeUserId);
+      }
+
+      const { data, error } = await query.limit(1);
+      if (error) {
+        console.warn('[Supabase] Phone check warning:', error.message);
+        return false;
+      }
+      return Boolean(data && data.length > 0);
+    } catch {
+      return false;
+    }
+  },
+
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<boolean> {
     if (!isSupabaseConfigured) return false;
+
+    let cleanPhone = updates.phone;
+    if (cleanPhone !== undefined && cleanPhone !== null && cleanPhone.trim() !== '') {
+      cleanPhone = normalizePhoneNumber(cleanPhone);
+      // Pre-check for duplicate phone excluding current user
+      const taken = await this.isPhoneTaken(cleanPhone, userId);
+      if (taken) {
+        const err: any = new Error('duplicate_phone_number');
+        err.code = '23505';
+        throw err;
+      }
+    } else if (cleanPhone !== undefined) {
+      cleanPhone = '';
+    }
+
     const payload: Record<string, any> = {
       updated_at: new Date().toISOString()
     };
-    if (updates.fullName !== undefined) payload.full_name = updates.fullName;
-    if (updates.phone !== undefined) payload.phone = updates.phone;
+    if (updates.fullName !== undefined) payload.full_name = updates.fullName.trim();
+    if (cleanPhone !== undefined) payload.phone = cleanPhone;
     if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
     if (updates.preferredLanguage !== undefined) payload.preferred_language = updates.preferredLanguage;
 
@@ -75,6 +117,11 @@ export const supabaseService = {
 
     if (error) {
       console.error('[Supabase] Error updating profile:', error.message);
+      if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('idx_profiles_phone_unique')) {
+        const err: any = new Error('duplicate_phone_number');
+        err.code = '23505';
+        throw err;
+      }
       throw error;
     }
     return true;

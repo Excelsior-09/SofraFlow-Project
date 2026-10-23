@@ -23,6 +23,7 @@ import { Button } from '../../components/common/Button';
 import { Alert } from '../../components/common/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { validateFullName, isValidPhoneNumber } from '../../utils/phoneValidation';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUserProfile, changePasswordWithVerification, reloadProfile, isLoading: authLoading } = useAuth();
@@ -91,19 +92,34 @@ export const ProfilePage: React.FC = () => {
     setProfileError(null);
     setProfileSuccess(null);
 
-    const trimmedName = fullName.trim();
-    if (trimmedName.length < 2) {
-      setProfileError(t('profile.errors.nameTooShort'));
+    const nameVal = validateFullName(fullName);
+    if (!nameVal.isValid) {
+      setProfileError(t('profile.errors.nameInvalid'));
+      return;
+    }
+
+    if (phoneNumber && phoneNumber.trim() && !isValidPhoneNumber(phoneNumber)) {
+      setProfileError(t('profile.errors.phoneInvalid'));
       return;
     }
 
     setIsSavingProfile(true);
     try {
-      await updateUserProfile({
-        fullName: trimmedName,
+      const res = await updateUserProfile({
+        fullName: fullName.trim(),
         phone: phoneNumber.trim() || undefined
       });
-      setProfileSuccess(t('profile.profileUpdated'));
+
+      if (!res.success) {
+        setProfileError(res.error || t('profile.errors.updateFailed'));
+        return;
+      }
+
+      if (res.noChanges) {
+        setProfileSuccess(t('profile.errors.noChangesDetected'));
+      } else {
+        setProfileSuccess(t('profile.profileUpdated'));
+      }
       setTimeout(() => setProfileSuccess(null), 4000);
     } catch (err: any) {
       console.error('[ProfilePage] Error updating profile:', err);
@@ -146,7 +162,22 @@ export const ProfilePage: React.FC = () => {
 
     setIsUpdatingPassword(true);
     try {
-      await changePasswordWithVerification(currentPassword, newPassword);
+      const res = await changePasswordWithVerification(currentPassword, newPassword);
+      if (!res.success) {
+        const msg = res.error || '';
+        if (
+          msg.includes('incorrect') ||
+          msg.includes('credentials') ||
+          msg.includes('invalid') ||
+          msg.includes('Invalid login')
+        ) {
+          setPasswordError(t('profile.errors.incorrectCurrentPassword'));
+        } else {
+          setPasswordError(msg || t('profile.errors.updateFailed'));
+        }
+        return;
+      }
+
       setPasswordSuccess(t('profile.passwordUpdated'));
       setCurrentPassword('');
       setNewPassword('');
@@ -154,17 +185,7 @@ export const ProfilePage: React.FC = () => {
       setTimeout(() => setPasswordSuccess(null), 5000);
     } catch (err: any) {
       console.error('[ProfilePage] Error changing password:', err);
-      const msg = err?.message || '';
-      if (
-        msg.includes('incorrect') ||
-        msg.includes('credentials') ||
-        msg.includes('invalid') ||
-        msg.includes('Invalid login')
-      ) {
-        setPasswordError(t('profile.errors.incorrectCurrentPassword'));
-      } else {
-        setPasswordError(msg || t('profile.errors.updateFailed'));
-      }
+      setPasswordError(err?.message || t('profile.errors.updateFailed'));
     } finally {
       setIsUpdatingPassword(false);
     }

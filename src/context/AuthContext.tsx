@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured, setRememberMePreference } from '../lib/
 import { supabaseService, UserProfile } from '../services/supabaseService';
 import { db } from '../services/db';
 import { Restaurant, User } from '../types';
+import { normalizePhoneNumber, isValidPhoneNumber, validateFullName } from '../utils/phoneValidation';
 
 export interface MfaEnrollmentResult {
   id: string;
@@ -45,12 +46,12 @@ export interface AuthContextType {
   ) => Promise<{ user: any; needsEmailConfirmation: boolean }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; error?: string }>;
   updateUserProfile: (updates: {
     fullName: string;
     phone?: string;
     preferredLanguage?: 'en' | 'fr';
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; noChanges?: boolean }>;
   changePasswordWithVerification: (
     currentPassword: string,
     newPassword: string
@@ -734,6 +735,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Password Recovery via Email
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!email || !email.trim()) {
+      return { success: false, error: 'Veuillez saisir votre adresse e-mail.' };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return { success: false, error: 'Format d’adresse e-mail invalide.' };
+    }
     if (!isSupabaseConfigured) {
       return { success: true };
     }
@@ -750,41 +758,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Update Password
-  const updatePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+  // Update Password (used for reset flows and session-based updates)
+  const updatePassword = async (
+    newPassword: string,
+    confirmPassword?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return {
+        success: false,
+        error: 'Les mots de passe ne correspondent pas.'
+      };
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return {
+        success: false,
+        error: 'Le nouveau mot de passe doit comporter au moins 8 caractères.'
+      };
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNum = /[0-9]/.test(newPassword);
+    const hasSym = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNum || !hasSym) {
+      return {
+        success: false,
+        error: 'Le nouveau mot de passe doit comporter au moins une majuscule, une minuscule, un chiffre et un caractère spécial.'
+      };
+    }
+
     if (!isSupabaseConfigured) {
       return { success: true };
     }
     try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        return {
+          success: false,
+          error: 'Votre lien de réinitialisation est invalide ou a expiré. Veuillez faire une nouvelle demande.'
+        };
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
       if (error) {
         return { success: false, error: error.message };
       }
+
+      await supabase.auth.refreshSession();
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message || 'Password update failed.' };
     }
   };
 
-  // Update User Profile (Full Name and Phone)
+  // Update User Profile (Full Name and Phone) with strict validation & uniqueness
   const updateUserProfile = async (updates: {
     fullName: string;
     phone?: string;
     preferredLanguage?: 'en' | 'fr';
-  }): Promise<{ success: boolean; error?: string }> => {
+  }): Promise<{ success: boolean; error?: string; noChanges?: boolean }> => {
     try {
-      const trimmedName = updates.fullName?.trim() || '';
-      if (!trimmedName || trimmedName.length < 2) {
+      // 1. Validate Full Name
+      const nameVal = validateFullName(updates.fullName);
+      if (!nameVal.isValid) {
         return {
           success: false,
-          error: 'Le nom complet doit comporter au moins 2 caractères.'
+          error: nameVal.error || 'Le nom complet doit comporter entre 2 et 100 caractères et contenir uniquement des lettres valides.'
         };
+      }
+      const trimmedName = updates.fullName.trim();
+
+      // 2. Validate and Normalize Phone Number
+      let cleanPhone = '';
+      if (updates.phone !== undefined && updates.phone !== null && updates.phone.trim() !== '') {
+        if (!isValidPhoneNumber(updates.phone)) {
+          return {
+            success: false,
+            error: 'Veuillez saisir un numéro de téléphone valide (ex. 06 12 34 56 78 ou +212 6 12 34 56 78).'
+          };
+        }
+        cleanPhone = normalizePhoneNumber(updates.phone);
+      }
+
+      // 3. Check for unchanged values
+      const currentNormalizedPhone = user?.phone ? normalizePhoneNumber(user.phone) : '';
+      const isUnchanged =
+        trimmedName === (user?.fullName || '') &&
+        cleanPhone === currentNormalizedPhone &&
+        (!updates.preferredLanguage || updates.preferredLanguage === user?.preferredLanguage);
+
+      if (isUnchanged) {
+        return { success: true, noChanges: true };
       }
 
       if (isSupabaseConfigured) {
-        // ALWAYS use the authenticated user ID directly from Supabase Auth
+        // ALWAYS use the verified authenticated user ID directly from Supabase Auth
         const { data: authData, error: authErr } = await supabase.auth.getUser();
         if (authErr || !authData?.user) {
           return {
@@ -794,16 +866,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const verifiedUserId = authData.user.id;
-        const cleanPhone = updates.phone?.trim() || '';
 
-        // 1. Update public.profiles table
-        await supabaseService.updateProfile(verifiedUserId, {
-          fullName: trimmedName,
-          phone: cleanPhone,
-          preferredLanguage: updates.preferredLanguage
-        });
+        // 4. Pre-check phone uniqueness excluding current user
+        if (cleanPhone) {
+          const taken = await supabaseService.isPhoneTaken(cleanPhone, verifiedUserId);
+          if (taken) {
+            return {
+              success: false,
+              error: 'Ce numéro de téléphone est déjà associé à un autre compte.'
+            };
+          }
+        }
 
-        // 2. Synchronize Supabase Auth user metadata
+        // 5. Update public.profiles table
+        try {
+          await supabaseService.updateProfile(verifiedUserId, {
+            fullName: trimmedName,
+            phone: cleanPhone,
+            preferredLanguage: updates.preferredLanguage
+          });
+        } catch (dbErr: any) {
+          if (dbErr?.message?.includes('duplicate_phone_number') || dbErr?.code === '23505') {
+            return {
+              success: false,
+              error: 'Ce numéro de téléphone est déjà associé à un autre compte.'
+            };
+          }
+          throw dbErr;
+        }
+
+        // 6. Synchronize Supabase Auth user metadata
         await supabase.auth.updateUser({
           data: {
             full_name: trimmedName,
@@ -812,7 +904,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        // 3. Refresh in-memory state
+        // 7. Refresh in-memory state
         const freshProfile = await supabaseService.getProfile(verifiedUserId);
         if (freshProfile) {
           setProfile(freshProfile);
@@ -830,26 +922,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } else {
         // Mock / Offline mode
-        const updated = db.updateUserProfile({
-          fullName: trimmedName,
-          phone: updates.phone?.trim(),
-          preferredLanguage: updates.preferredLanguage
-        });
-        if (updated) {
-          setUser(updated);
-          setProfile({
-            id: updated.id,
-            fullName: updated.fullName,
-            phone: updated.phone,
-            role: updated.role,
-            preferredLanguage: updated.preferredLanguage || 'fr'
+        try {
+          const updated = db.updateUserProfile({
+            fullName: trimmedName,
+            phone: cleanPhone,
+            preferredLanguage: updates.preferredLanguage
           });
+          if (updated) {
+            setUser(updated);
+            setProfile({
+              id: updated.id,
+              fullName: updated.fullName,
+              phone: updated.phone,
+              role: updated.role,
+              preferredLanguage: updated.preferredLanguage || 'fr'
+            });
+          }
+        } catch (mockErr: any) {
+          if (mockErr?.message === 'duplicate_phone_number') {
+            return {
+              success: false,
+              error: 'Ce numéro de téléphone est déjà associé à un autre compte.'
+            };
+          }
+          throw mockErr;
         }
       }
 
       return { success: true };
     } catch (err: any) {
       console.error('[AuthContext] updateUserProfile error:', err);
+      if (err?.message?.includes('duplicate_phone_number') || err?.code === '23505') {
+        return {
+          success: false,
+          error: 'Ce numéro de téléphone est déjà associé à un autre compte.'
+        };
+      }
       return {
         success: false,
         error: err?.message || 'Échec de la mise à jour du profil.'
@@ -880,7 +988,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const hasUpper = /[A-Z]/.test(newPassword);
       const hasLower = /[a-z]/.test(newPassword);
       const hasNum = /[0-9]/.test(newPassword);
-      const hasSym = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+      const hasSym = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword);
 
       if (!hasUpper || !hasLower || !hasNum || !hasSym) {
         return {
@@ -930,6 +1038,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error: updateErr.message
           };
         }
+
+        // STEP 3: Refresh session after password change
+        await supabase.auth.refreshSession();
       }
 
       return { success: true };

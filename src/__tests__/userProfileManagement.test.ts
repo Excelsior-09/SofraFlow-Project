@@ -3,6 +3,7 @@ import { dictionaries } from '../locales';
 import { supabase } from '../lib/supabase';
 import { supabaseService } from '../services/supabaseService';
 import { db } from '../services/db';
+import { normalizePhoneNumber, isValidPhoneNumber, validateFullName } from '../utils/phoneValidation';
 
 describe('User Profile Management — Requirements & Logic', () => {
   beforeEach(() => {
@@ -38,7 +39,7 @@ describe('User Profile Management — Requirements & Logic', () => {
       expect(enKeys.length).toBeGreaterThan(25);
     });
 
-    it('contains all required error and requirement keys', () => {
+    it('contains all required error and requirement keys including phone/name uniqueness', () => {
       const requiredKeys = [
         'pageTitle',
         'pageSubtitle',
@@ -82,6 +83,12 @@ describe('User Profile Management — Requirements & Logic', () => {
         'passwordMismatch',
         'sameAsCurrent',
         'nameTooShort',
+        'nameInvalid',
+        'phoneInvalid',
+        'phoneAlreadyExists',
+        'noChangesDetected',
+        'sessionExpired',
+        'recoveryLinkInvalid',
         'updateFailed'
       ];
 
@@ -97,7 +104,7 @@ describe('User Profile Management — Requirements & Logic', () => {
       const mockProfile = {
         id: 'usr_abc123',
         full_name: 'Tariq Benjelloun',
-        phone: '+212 6 61 23 45 67',
+        phone: '+212661234567',
         role: 'owner',
         preferred_language: 'fr',
         created_at: '2026-01-01T00:00:00Z',
@@ -120,14 +127,17 @@ describe('User Profile Management — Requirements & Logic', () => {
       expect(result).not.toBeNull();
       expect(result?.id).toBe('usr_abc123');
       expect(result?.fullName).toBe('Tariq Benjelloun');
-      expect(result?.phone).toBe('+212 6 61 23 45 67');
+      expect(result?.phone).toBe('+212661234567');
       expect(result?.role).toBe('owner');
       expect(result?.preferredLanguage).toBe('fr');
 
       fromSpy.mockRestore();
     });
 
-    it('updateProfile updates full_name and phone using authenticated user id', async () => {
+    it('updateProfile normalizes phone and updates full_name using authenticated user id', async () => {
+      // Mock isPhoneTaken to return false
+      vi.spyOn(supabaseService, 'isPhoneTaken').mockResolvedValue(false);
+
       const updateMock = vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null })
       });
@@ -138,14 +148,14 @@ describe('User Profile Management — Requirements & Logic', () => {
 
       await supabaseService.updateProfile('usr_abc123', {
         fullName: 'Karim Tazi',
-        phone: '+212 6 12 34 56 78'
+        phone: '06 12 34 56 78' // Raw format
       });
 
       expect(fromSpy).toHaveBeenCalledWith('profiles');
       expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           full_name: 'Karim Tazi',
-          phone: '+212 6 12 34 56 78',
+          phone: '+212612345678', // Normalized to E.164
           updated_at: expect.any(String)
         })
       );
@@ -153,28 +163,83 @@ describe('User Profile Management — Requirements & Logic', () => {
       fromSpy.mockRestore();
     });
 
-    it('db service updates user profile in local store correctly', () => {
+    it('updateProfile throws duplicate_phone_number when pre-check finds phone taken by another user', async () => {
+      vi.spyOn(supabaseService, 'isPhoneTaken').mockResolvedValue(true);
+
+      await expect(
+        supabaseService.updateProfile('usr_current', {
+          phone: '0612345678'
+        })
+      ).rejects.toThrow('duplicate_phone_number');
+    });
+
+    it('updateProfile handles database constraint violation 23505 gracefully', async () => {
+      vi.spyOn(supabaseService, 'isPhoneTaken').mockResolvedValue(false);
+
+      const updateMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({
+          error: { code: '23505', message: 'duplicate key value violates unique constraint "idx_profiles_phone_unique"' }
+        })
+      });
+
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        update: updateMock
+      } as any);
+
+      await expect(
+        supabaseService.updateProfile('usr_current', {
+          phone: '+212612345678'
+        })
+      ).rejects.toThrow('duplicate_phone_number');
+    });
+  });
+
+  describe('3. Local DB Fallback Operations', () => {
+    it('updates user profile and normalizes phone number', () => {
       const initialUser = db.getCurrentUser();
       expect(initialUser).not.toBeNull();
       if (!initialUser) throw new Error('initialUser is null');
 
       const updated = db.updateUserProfile({
         fullName: 'Sara Alami',
-        phone: '+212 6 99 88 77 66'
+        phone: '06 99 88 77 66'
       });
 
       expect(updated).not.toBeNull();
       if (!updated) throw new Error('updated is null');
 
       expect(updated.fullName).toBe('Sara Alami');
-      expect(updated.phone).toBe('+212 6 99 88 77 66');
+      expect(updated.phone).toBe('+212699887766'); // Normalized
+      expect(updated.email).toBe(initialUser.email); // Read-only
+    });
 
-      // Email must remain unchanged
-      expect(updated.email).toBe(initialUser.email);
+    it('allows user to retain their existing phone number when updating name', () => {
+      const initialUser = db.getCurrentUser();
+      expect(initialUser).not.toBeNull();
+
+      // Update name while passing the same phone
+      const updated = db.updateUserProfile({
+        fullName: 'Sara Alami Updated',
+        phone: initialUser?.phone
+      });
+
+      expect(updated?.fullName).toBe('Sara Alami Updated');
+    });
+
+    it('rejects duplicate phone numbers taken by another user', () => {
+      // Register a phone for user 'other_user'
+      db.registerUserPhone('other_user', '+212655443322');
+
+      // Attempt to update current user with the other user's phone
+      expect(() => {
+        db.updateUserProfile({
+          phone: '06 55 44 33 22' // Normalizes to +212655443322
+        });
+      }).toThrow('duplicate_phone_number');
     });
   });
 
-  describe('3. Password Strength Validation Rules', () => {
+  describe('4. Password Strength Validation Rules', () => {
     const validatePasswordComplexity = (password: string) => {
       const hasMinLength = password.length >= 8;
       const hasUppercase = /[A-Z]/.test(password);
@@ -210,7 +275,7 @@ describe('User Profile Management — Requirements & Logic', () => {
     });
   });
 
-  describe('4. Secure Password Re-authentication & Verification', () => {
+  describe('5. Secure Password Re-authentication & Verification', () => {
     it('rejects password change if current password verification fails in Supabase Auth', async () => {
       const signInSpy = vi.spyOn(supabase.auth, 'signInWithPassword').mockResolvedValue({
         data: { user: null, session: null },
@@ -267,8 +332,10 @@ describe('User Profile Management — Requirements & Logic', () => {
     });
   });
 
-  describe('5. Email Immutability and Security Safeguards', () => {
+  describe('6. Email Immutability and Security Safeguards', () => {
     it('prevents email alteration through profile update service', async () => {
+      vi.spyOn(supabaseService, 'isPhoneTaken').mockResolvedValue(false);
+
       const updateMock = vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null })
       });
@@ -287,9 +354,30 @@ describe('User Profile Management — Requirements & Logic', () => {
       // Payload must not include email column
       expect(payload).not.toHaveProperty('email');
       expect(payload.full_name).toBe('Tariq');
-      expect(payload.phone).toBe('+212 6 00 00 00 00');
+      expect(payload.phone).toBe('+212600000000'); // Normalized
 
       fromSpy.mockRestore();
+    });
+  });
+
+  describe('7. Name Uniqueness Policy vs Phone Uniqueness', () => {
+    it('allows multiple distinct users to share the same full name', () => {
+      // In Moroccan / global restaurant culture, multiple users can legitimately share common names
+      const name = 'Mohamed Bennani';
+      expect(validateFullName(name).isValid).toBe(true);
+
+      // Phone numbers however must be unique
+      const phone1 = normalizePhoneNumber('06 11 22 33 44');
+      const phone2 = normalizePhoneNumber('06 55 66 77 88');
+      expect(phone1).not.toBe(phone2);
+      expect(isValidPhoneNumber(phone1)).toBe(true);
+      expect(isValidPhoneNumber(phone2)).toBe(true);
+    });
+
+    it('rejects invalid names that contain harmful scripts or numbers', () => {
+      expect(validateFullName('<script>alert(1)</script>').isValid).toBe(false);
+      expect(validateFullName('User123').isValid).toBe(false);
+      expect(validateFullName('A').isValid).toBe(false); // Too short
     });
   });
 });

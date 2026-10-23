@@ -730,6 +730,12 @@ export const fr = {
       passwordMismatch: 'Le mot de passe de confirmation ne correspond pas au nouveau mot de passe.',
       sameAsCurrent: 'Le nouveau mot de passe ne peut pas être identique au mot de passe actuel.',
       nameTooShort: 'Le nom complet doit contenir au moins 2 caractères.',
+      nameInvalid: 'Le nom complet doit comporter entre 2 et 100 caractères et contenir uniquement des lettres valides.',
+      phoneInvalid: 'Veuillez saisir un numéro de téléphone valide (ex. 06 12 34 56 78 ou +212 6 12 34 56 78).',
+      phoneAlreadyExists: 'Ce numéro de téléphone est déjà associé à un autre compte.',
+      noChangesDetected: 'Aucune modification détectée à enregistrer.',
+      sessionExpired: 'Votre session a expiré. Veuillez vous reconnecter.',
+      recoveryLinkInvalid: 'Votre lien de réinitialisation est invalide ou a expiré. Veuillez faire une nouvelle demande.',
       updateFailed: 'Échec de l’enregistrement des modifications. Veuillez réessayer.'
     }
   }

@@ -730,6 +730,12 @@ export const en = {
       passwordMismatch: 'The confirmation password does not match the new password.',
       sameAsCurrent: 'The new password cannot be the same as your current password.',
       nameTooShort: 'Full name must contain at least 2 characters.',
+      nameInvalid: 'Full name must contain between 2 and 100 characters and only valid letters.',
+      phoneInvalid: 'Please enter a valid phone number (e.g. 06 12 34 56 78 or +212 6 12 34 56 78).',
+      phoneAlreadyExists: 'This phone number is already registered to another account.',
+      noChangesDetected: 'No changes were detected to update.',
+      sessionExpired: 'Your session has expired. Please sign in again.',
+      recoveryLinkInvalid: 'Your password reset link is invalid or has expired. Please request a new one.',
       updateFailed: 'Failed to save changes. Please try again.'
     }
   }

@@ -10,6 +10,7 @@ import {
   SubscriptionPaymentRequest,
   PaymentVerificationStatus
 } from '../types';
+import { normalizePhoneNumber } from '../utils/phoneValidation';
 
 const STORAGE_KEYS = {
   RESTAURANTS: 'sofraflow_restaurants_v1',
@@ -962,13 +963,55 @@ class DatabaseService {
     return updated;
   }
 
+  public isPhoneTaken(phone: string, excludeUserId?: string): boolean {
+    if (!phone) return false;
+    const normalized = normalizePhoneNumber(phone);
+    if (!normalized) return false;
+
+    const registeredPhones = appStorage.getItem('sofraflow_registered_phones_v1');
+    const phoneMap: Record<string, string> = registeredPhones ? JSON.parse(registeredPhones) : {};
+
+    for (const [userId, storedPhone] of Object.entries(phoneMap)) {
+      if (userId !== excludeUserId && normalizePhoneNumber(storedPhone) === normalized) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public registerUserPhone(userId: string, phone: string): void {
+    const normalized = normalizePhoneNumber(phone);
+    const registeredPhones = appStorage.getItem('sofraflow_registered_phones_v1');
+    const phoneMap: Record<string, string> = registeredPhones ? JSON.parse(registeredPhones) : {};
+    phoneMap[userId] = normalized;
+    appStorage.setItem('sofraflow_registered_phones_v1', JSON.stringify(phoneMap));
+  }
+
   public updateUserProfile(updates: { fullName?: string; phone?: string; preferredLanguage?: 'en' | 'fr' }): User | null {
     const user = this.getCurrentUser();
     if (!user) return null;
+
+    let cleanPhone = updates.phone;
+    if (cleanPhone !== undefined && cleanPhone !== null && cleanPhone.trim() !== '') {
+      cleanPhone = normalizePhoneNumber(cleanPhone);
+      if (this.isPhoneTaken(cleanPhone, user.id)) {
+        throw new Error('duplicate_phone_number');
+      }
+      this.registerUserPhone(user.id, cleanPhone);
+    } else if (cleanPhone !== undefined) {
+      cleanPhone = '';
+      const registeredPhones = appStorage.getItem('sofraflow_registered_phones_v1');
+      if (registeredPhones) {
+        const phoneMap: Record<string, string> = JSON.parse(registeredPhones);
+        delete phoneMap[user.id];
+        appStorage.setItem('sofraflow_registered_phones_v1', JSON.stringify(phoneMap));
+      }
+    }
+
     const updated: User = {
       ...user,
-      fullName: updates.fullName !== undefined ? updates.fullName : user.fullName,
-      phone: updates.phone !== undefined ? updates.phone : user.phone,
+      fullName: updates.fullName !== undefined ? updates.fullName.trim() : user.fullName,
+      phone: cleanPhone !== undefined ? cleanPhone : user.phone,
       preferredLanguage: updates.preferredLanguage !== undefined ? updates.preferredLanguage : user.preferredLanguage
     };
     this.setCurrentUser(updated);
