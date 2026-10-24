@@ -32,7 +32,11 @@ export const AdminLoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Session verification on mount (avoids flickering / redirect loops)
-  const [isVerifyingSession, setIsVerifyingSession] = useState(true);
+  const hasStorageToken =
+    typeof window !== 'undefined' &&
+    Object.keys(localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+
+  const [isVerifyingSession, setIsVerifyingSession] = useState(hasStorageToken);
   const [isUnauthorizedSession, setIsUnauthorizedSession] = useState(false);
   const [unauthorizedEmail, setUnauthorizedEmail] = useState('');
 
@@ -46,11 +50,11 @@ export const AdminLoginPage: React.FC = () => {
   const [enrollSecret, setEnrollSecret] = useState<string | null>(null);
   const [isCopiedSecret, setIsCopiedSecret] = useState(false);
 
-  // Check active session on mount
+  // Check active session once on mount
   useEffect(() => {
     let isMounted = true;
     async function checkCurrentSession() {
-      if (!isSupabaseConfigured) {
+      if (!isSupabaseConfigured || !hasStorageToken) {
         if (isMounted) setIsVerifyingSession(false);
         return;
       }
@@ -65,7 +69,7 @@ export const AdminLoginPage: React.FC = () => {
             const { data: factorsData } = await supabase.auth.mfa.listFactors();
             const hasVerifiedTotp = (factorsData?.totp || []).some(f => f.status === 'verified');
 
-            // If MFA not enrolled or session already elevated to AAL2, navigate to dashboard
+            // If MFA not enrolled or session already elevated to AAL2, navigate to dashboard immediately
             if (!hasVerifiedTotp || aalData?.currentLevel === 'aal2') {
               if (isMounted) {
                 const destination = (location.state as any)?.from?.pathname || '/admin/overview';
@@ -108,7 +112,7 @@ export const AdminLoginPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [navigate, location]);
+  }, []); // Run ONCE on mount to prevent re-triggering loops
 
   // Handle Step 1: Super Admin Credentials
   const handleCredentialsSubmit = async (e: React.FormEvent) => {

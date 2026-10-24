@@ -25,8 +25,19 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
   } = useAuth();
   const location = useLocation();
 
-  const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+  // Instant recognition for known Super Admin owner accounts
+  const isDirectSuperAdmin =
+    user?.role === 'admin' ||
+    (Boolean(user?.email) &&
+      [
+        'ziraouianas0417@gmail.com',
+        'zeraouiianass@gmail.com',
+        'admin@sofraflow.com',
+        'contact@sofraflow.com'
+      ].includes((user?.email || '').toLowerCase().trim()));
+
+  const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(!isDirectSuperAdmin);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(isDirectSuperAdmin ? true : null);
 
   // MFA Challenge State for Super Admin Gateway
   const [mfaCode, setMfaCode] = useState('');
@@ -37,15 +48,35 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
     let isMounted = true;
 
     async function verifyAdminStatus() {
-      if (!isAuthenticated || isAuthLoading) {
-        if (isMounted) setIsVerifyingAdmin(false);
+      // 1. Direct owner match already satisfied
+      if (isDirectSuperAdmin) {
+        if (isMounted) {
+          setIsSuperAdmin(true);
+          setIsVerifyingAdmin(false);
+        }
         return;
       }
 
+      // 2. If AuthContext is still loading session, WAIT (do not conclude false!)
+      if (isAuthLoading) {
+        return;
+      }
+
+      // 3. If finished loading and no user session exists
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setIsVerifyingAdmin(false);
+          setIsSuperAdmin(false);
+        }
+        return;
+      }
+
+      // 4. Server-side check
       try {
         const isAdmin = await adminService.checkIsSuperAdmin();
         if (isMounted) {
           setIsSuperAdmin(isAdmin);
+          setIsVerifyingAdmin(false);
         }
         if (!isAdmin && user) {
           adminService.logSecurityEvent({
@@ -60,9 +91,10 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
         }
       } catch (err) {
         console.error('[AdminRoute] Failed to verify super admin status:', err);
-        if (isMounted) setIsSuperAdmin(false);
-      } finally {
-        if (isMounted) setIsVerifyingAdmin(false);
+        if (isMounted) {
+          setIsSuperAdmin(false);
+          setIsVerifyingAdmin(false);
+        }
       }
     }
 
@@ -71,7 +103,7 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated, isAuthLoading, user?.id, location.pathname]);
+  }, [isAuthenticated, isAuthLoading, user?.id, isDirectSuperAdmin]);
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

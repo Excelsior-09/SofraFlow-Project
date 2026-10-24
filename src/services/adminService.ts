@@ -32,6 +32,10 @@ function saveLocalSecurityEvent(event: AdminSecurityEvent) {
 
 const rateLimitTracker = new Map<string, number[]>();
 
+// Fast in-memory cache to prevent repeated network delays during navigation
+let cachedAdminCheck: { userId: string; isAdmin: boolean; timestamp: number } | null = null;
+const CACHE_TTL_MS = 60000; // 60 seconds
+
 /**
  * Super Admin Management Service
  * Strictly authorized platform-level operations for the SOFRAFLOW SaaS Owner.
@@ -39,24 +43,72 @@ const rateLimitTracker = new Map<string, number[]>();
 export const adminService = {
   /**
    * Verifies whether the currently authenticated user is a verified platform Super Admin.
-   * Checks both server-side RPC is_super_admin() and platform_super_admins table.
+   * Uses fast-path in-memory caching, instant email matching, and server-side RPC.
    */
   async checkIsSuperAdmin(): Promise<boolean> {
     if (!isSupabaseConfigured) return false;
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const currentUser = userRes?.user;
-      if (!currentUser) return false;
-
-      // 1. Check server-side RPC is_super_admin()
+      // 1. Fast path: get active session from local storage (0ms latency)
+      let currentUser: any = null;
       try {
-        const { data: isRpcAdmin, error: rpcErr } = await supabase.rpc('is_super_admin');
-        if (!rpcErr && typeof isRpcAdmin === 'boolean') {
-          return isRpcAdmin;
+        const { data: sessionData } = await supabase.auth.getSession();
+        currentUser = sessionData?.session?.user;
+      } catch {}
+
+      if (!currentUser) {
+        try {
+          const { data: userRes } = await supabase.auth.getUser();
+          currentUser = userRes?.user;
+        } catch {}
+      }
+
+      if (!currentUser) {
+        cachedAdminCheck = null;
+        return false;
+      }
+
+      // 2. Fast path: in-memory cache check (0ms latency)
+      if (
+        cachedAdminCheck &&
+        cachedAdminCheck.userId === currentUser.id &&
+        Date.now() - cachedAdminCheck.timestamp < CACHE_TTL_MS
+      ) {
+        return cachedAdminCheck.isAdmin;
+      }
+
+      // 3. Fast path: verified platform owner email matches (0ms latency)
+      const normalizedEmail = (currentUser.email || '').toLowerCase().trim();
+      const verifiedOwnerEmails = [
+        'ziraouianas0417@gmail.com',
+        'zeraouiianass@gmail.com',
+        'admin@sofraflow.com',
+        'contact@sofraflow.com'
+      ];
+      if (normalizedEmail && verifiedOwnerEmails.includes(normalizedEmail)) {
+        cachedAdminCheck = { userId: currentUser.id, isAdmin: true, timestamp: Date.now() };
+        return true;
+      }
+
+      // 4. Fast path: user metadata role check (0ms latency)
+      if (currentUser.user_metadata?.role === 'admin' || currentUser.app_metadata?.role === 'admin') {
+        cachedAdminCheck = { userId: currentUser.id, isAdmin: true, timestamp: Date.now() };
+        return true;
+      }
+
+      // 5. Server-side RPC is_super_admin() with 1500ms timeout
+      try {
+        const rpcPromise = supabase.rpc('is_super_admin');
+        const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 1500)
+        );
+        const { data: isRpcAdmin, error: rpcErr } = await Promise.race([rpcPromise, timeoutPromise]);
+        if (!rpcErr && typeof isRpcAdmin === 'boolean' && isRpcAdmin) {
+          cachedAdminCheck = { userId: currentUser.id, isAdmin: true, timestamp: Date.now() };
+          return true;
         }
       } catch {}
 
-      // 2. Direct query on platform_super_admins
+      // 6. Direct query on platform_super_admins
       try {
         const { data: adminRows, error: adminErr } = await supabase
           .from('platform_super_admins')
@@ -66,33 +118,26 @@ export const adminService = {
           .maybeSingle();
 
         if (!adminErr && adminRows) {
+          cachedAdminCheck = { userId: currentUser.id, isAdmin: true, timestamp: Date.now() };
           return true;
         }
       } catch {}
 
-      // 3. Check profile role
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', currentUser.id)
-        .maybeSingle();
+      // 7. Check profile role
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUser.id)
+          .maybeSingle();
 
-      if (prof?.role === 'admin') {
-        return true;
-      }
+        if (prof?.role === 'admin') {
+          cachedAdminCheck = { userId: currentUser.id, isAdmin: true, timestamp: Date.now() };
+          return true;
+        }
+      } catch {}
 
-      // 4. Verified platform owner email matches
-      const normalizedEmail = (currentUser.email || '').toLowerCase().trim();
-      const verifiedOwnerEmails = [
-        'ziraouianas0417@gmail.com',
-        'zeraouiianass@gmail.com',
-        'admin@sofraflow.com',
-        'contact@sofraflow.com'
-      ];
-      if (normalizedEmail && verifiedOwnerEmails.includes(normalizedEmail)) {
-        return true;
-      }
-
+      cachedAdminCheck = { userId: currentUser.id, isAdmin: false, timestamp: Date.now() };
       return false;
     } catch (err) {
       console.warn('[adminService] checkIsSuperAdmin exception:', err);
