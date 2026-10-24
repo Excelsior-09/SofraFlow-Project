@@ -33,7 +33,7 @@ DECLARE
   v_is_registered_admin BOOLEAN;
 BEGIN
   IF NEW.role = 'admin' AND (OLD.role IS NULL OR OLD.role <> 'admin') THEN
-    -- Check if the target user is an active registered super admin in the dedicated registry
+    -- Check if target user is an active registered super admin in the dedicated registry
     SELECT EXISTS (
       SELECT 1 FROM public.platform_super_admins
       WHERE user_id = NEW.id AND is_active = true
