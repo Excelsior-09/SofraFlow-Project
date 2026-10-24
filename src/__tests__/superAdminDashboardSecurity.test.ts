@@ -338,17 +338,19 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
   });
 
   describe('7. Secure Claude API Configuration & Credential Vault', () => {
-    it('saves and rotates Claude API key securely with valid format', async () => {
+    it('saves and rotates MWAPI gateway key securely without requiring sk-ant- prefix', async () => {
       vi.spyOn(supabase, 'rpc').mockImplementation((async (fn: string) => {
         if (fn === 'save_claude_api_key') {
-          return { data: { success: true, message: 'Clé enregistrée avec succès' }, error: null } as any;
+          return { data: { success: true, message: 'Clé MWAPI enregistrée avec succès' }, error: null } as any;
         }
         if (fn === 'get_claude_api_config') {
           return {
             data: {
               is_configured: true,
-              key_fingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
-              model_name: 'claude-3-7-sonnet',
+              provider: 'mwapi',
+              base_url: 'https://api.mwapi.dev',
+              key_fingerprint: 'sk-mwapi-••••••••••••••••••••••••••••••••4928',
+              model_name: 'claude-sonnet-4-6',
               monthly_budget_usd: 150.0,
               month_spend_usd: 14.50
             },
@@ -358,23 +360,69 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
         return { data: null, error: null } as any;
       }) as any);
 
-      const validKey = 'sk-ant-api03-sample-production-secure-claude-key-w9cA';
-      const result = await adminService.saveClaudeApiKey(validKey, 'claude-3-7-sonnet', 150);
+      // Valid MWAPI Gateway key generated from https://api.mwapi.dev/keys (does not start with sk-ant-)
+      const validMwapiKey = 'sk-mwapi-live-token-secret-gateway-key-4928';
+      const result = await adminService.saveClaudeApiKey(
+        validMwapiKey,
+        'claude-sonnet-4-6',
+        150,
+        4096,
+        'mwapi',
+        'https://api.mwapi.dev'
+      );
 
       expect(result.success).toBe(true);
       expect(result.config?.isConfigured).toBe(true);
-      expect(result.config?.keyFingerprint).toContain('sk-ant-');
+      expect(result.config?.provider).toBe('mwapi');
+      expect(result.config?.baseUrl).toBe('https://api.mwapi.dev');
       expect(result.config?.keyFingerprint).toContain('••••');
       // Verify raw secret key was NEVER returned in config response
-      expect(result.config?.keyFingerprint).not.toBe(validKey);
+      expect(result.config?.keyFingerprint).not.toBe(validMwapiKey);
     });
 
-    it('rejects invalid or malformed Claude API keys with understandable error', async () => {
-      const invalidKey = 'invalid-not-claude-key';
-      const result = await adminService.saveClaudeApiKey(invalidKey);
+    it('enforces sk-ant- prefix validation when provider is explicitly set to anthropic', async () => {
+      const nonAnthropicKey = 'sk-mwapi-token-without-anthropic-prefix';
+      const result = await adminService.saveClaudeApiKey(
+        nonAnthropicKey,
+        'claude-sonnet-4-6',
+        100,
+        4096,
+        'anthropic',
+        'https://api.anthropic.com'
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('sk-ant-');
+    });
+
+    it('rejects invalid or too short MWAPI gateway keys (< 16 chars)', async () => {
+      const shortKey = 'short-key-123';
+      const result = await adminService.saveClaudeApiKey(
+        shortKey,
+        'claude-sonnet-4-6',
+        100,
+        4096,
+        'mwapi',
+        'https://api.mwapi.dev'
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('16 caractères');
+    });
+
+    it('rejects invalid gateway base URL formats', async () => {
+      const validMwapiKey = 'sk-mwapi-live-token-secret-gateway-key-4928';
+      const result = await adminService.saveClaudeApiKey(
+        validMwapiKey,
+        'claude-sonnet-4-6',
+        100,
+        4096,
+        'mwapi',
+        'ftp://invalid-protocol.com'
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Format d’URL invalide');
     });
 
     it('never exposes raw API key to customer-facing clients or config queries', async () => {
@@ -489,7 +537,9 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
         p_api_key: '',
         p_model: 'claude-sonnet-5',
         p_budget_usd: 150,
-        p_max_tokens: 4096
+        p_max_tokens: 4096,
+        p_provider: 'mwapi',
+        p_base_url: 'https://api.mwapi.dev'
       });
       expect(res.config?.modelName).toBe('claude-sonnet-5');
     });

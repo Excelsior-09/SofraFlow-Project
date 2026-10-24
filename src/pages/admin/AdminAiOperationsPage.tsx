@@ -19,14 +19,21 @@ import {
   ShieldAlert,
   Check,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Globe
 } from 'lucide-react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import { adminService } from '../../services/adminService';
-import { AiUsageEventRecord, ClaudeApiConfigRecord, AVAILABLE_CLAUDE_MODELS } from '../../types';
+import {
+  AiUsageEventRecord,
+  ClaudeApiConfigRecord,
+  AVAILABLE_CLAUDE_MODELS,
+  AiGatewayProvider,
+  AVAILABLE_AI_PROVIDERS
+} from '../../types';
 
 export const AdminAiOperationsPage: React.FC = () => {
   const { language } = useLanguage();
@@ -38,6 +45,8 @@ export const AdminAiOperationsPage: React.FC = () => {
   // Claude API Configuration & Vault State
   const [claudeConfig, setClaudeConfig] = useState<ClaudeApiConfigRecord | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<AiGatewayProvider>('mwapi');
+  const [customBaseUrl, setCustomBaseUrl] = useState('https://api.mwapi.dev');
   const [newApiKey, setNewApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-6');
   const [monthlyBudgetUsd, setMonthlyBudgetUsd] = useState(100);
@@ -57,6 +66,10 @@ export const AdminAiOperationsPage: React.FC = () => {
       if (configData) {
         setSelectedModel(configData.modelName || 'claude-sonnet-4-6');
         setMonthlyBudgetUsd(configData.monthlyBudgetUsd);
+        setSelectedProvider(configData.provider || 'mwapi');
+        setCustomBaseUrl(
+          configData.baseUrl || (configData.provider === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.mwapi.dev')
+        );
       }
     } catch (err) {
       console.error('[AdminAiOperationsPage] Error loading AI events:', err);
@@ -79,13 +92,19 @@ export const AdminAiOperationsPage: React.FC = () => {
       const res = await adminService.saveClaudeApiKey(
         newApiKey.trim() ? newApiKey : '',
         selectedModel,
-        Number(monthlyBudgetUsd)
+        Number(monthlyBudgetUsd),
+        4096,
+        selectedProvider,
+        customBaseUrl
       );
 
       if (!res.success) {
         setConfigFeedback({ type: 'error', message: res.error || 'Erreur lors de la configuration.' });
       } else {
-        setConfigFeedback({ type: 'success', message: res.message || 'Configuration Claude API enregistrée et chiffrée avec succès.' });
+        setConfigFeedback({
+          type: 'success',
+          message: res.message || 'Configuration Claude API enregistrée et chiffrée avec succès.'
+        });
         if (res.config) setClaudeConfig(res.config);
         setNewApiKey('');
         setShowConfigModal(false);
@@ -106,7 +125,14 @@ export const AdminAiOperationsPage: React.FC = () => {
     setIsSavingKey(true);
     setConfigFeedback(null);
     try {
-      const res = await adminService.saveClaudeApiKey('', modelId, claudeConfig.monthlyBudgetUsd);
+      const res = await adminService.saveClaudeApiKey(
+        '',
+        modelId,
+        claudeConfig.monthlyBudgetUsd,
+        4096,
+        claudeConfig.provider || 'mwapi',
+        claudeConfig.baseUrl || 'https://api.mwapi.dev'
+      );
       if (res.success) {
         setConfigFeedback({
           type: 'success',
@@ -130,11 +156,12 @@ export const AdminAiOperationsPage: React.FC = () => {
     try {
       const res = await adminService.testClaudeConnection();
       if (res.success) {
+        const providerName = (res.provider || claudeConfig?.provider || 'mwapi') === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct';
         setConfigFeedback({
           type: 'success',
           message: isEn
-            ? `Health check successful! Roundtrip latency: ${res.latencyMs || 140}ms.`
-            : `Test de connectivité réussi ! Latence aller-retour : ${res.latencyMs || 140}ms.`
+            ? `Health check successful via ${providerName}! Roundtrip latency: ${res.latencyMs || 140}ms.`
+            : `Test de connectivité réussi via ${providerName} ! Latence aller-retour : ${res.latencyMs || 140}ms.`
         });
         const updatedConfig = await adminService.getClaudeConfig();
         setClaudeConfig(updatedConfig);
@@ -259,7 +286,23 @@ export const AdminAiOperationsPage: React.FC = () => {
         </div>
 
         {/* Configuration Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
+          {/* Gateway Provider & Base URL */}
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
+              {isEn ? 'AI Gateway' : 'Passerelle IA'}
+            </span>
+            <div className="font-bold text-xs text-purple-600 dark:text-purple-300 flex items-center gap-1.5 truncate">
+              <Globe className="w-3.5 h-3.5 shrink-0 text-purple-500" />
+              <span className="truncate">
+                {(claudeConfig?.provider || 'mwapi') === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct'}
+              </span>
+            </div>
+            <span className="text-[10px] text-[var(--text-secondary)] font-mono block truncate">
+              {claudeConfig?.baseUrl || 'https://api.mwapi.dev'}
+            </span>
+          </div>
+
           {/* Masked Fingerprint */}
           <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
@@ -433,10 +476,10 @@ export const AdminAiOperationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL: CONFIGURE / ROTATE CLAUDE API KEY */}
+      {/* MODAL: CONFIGURE / ROTATE CLAUDE API KEY & GATEWAY */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-xl bg-[var(--bg-card)] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
@@ -444,10 +487,12 @@ export const AdminAiOperationsPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-[var(--text-primary)] font-display tracking-tight">
-                    {isEn ? 'Configure Claude API Key & Models' : 'Configuration de la Clé & Modèles Claude'}
+                    {isEn ? 'Configure AI Gateway & Claude Models' : 'Configuration de la Passerelle IA & Modèles Claude'}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    {isEn ? 'Manage Anthropic credentials and active reasoning engine.' : 'Gérez les identifiants Anthropic et le modèle de raisonnement actif.'}
+                    {isEn
+                      ? 'Configure MWAPI Gateway or Anthropic credentials and active reasoning engine.'
+                      : 'Configurez la passerelle MWAPI ou Anthropic direct et le moteur de raisonnement actif.'}
                   </p>
                 </div>
               </div>
@@ -460,11 +505,121 @@ export const AdminAiOperationsPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveConfig} className="space-y-4">
+              {/* Provider Selection */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[var(--text-primary)] block">
-                  {isEn ? 'Anthropic API Key' : 'Clé API Anthropic (sk-ant-...)'}{' '}
-                  {!claudeConfig?.isConfigured && <span className="text-rose-500">*</span>}
+                  {isEn ? 'Gateway Provider' : 'Fournisseur de Passerelle IA'}
                 </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {AVAILABLE_AI_PROVIDERS.map((provider) => {
+                    const isSelected = selectedProvider === provider.id;
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedProvider(provider.id);
+                          if (provider.id === 'mwapi' && (customBaseUrl === 'https://api.anthropic.com' || !customBaseUrl)) {
+                            setCustomBaseUrl('https://api.mwapi.dev');
+                          } else if (provider.id === 'anthropic' && (customBaseUrl === 'https://api.mwapi.dev' || !customBaseUrl)) {
+                            setCustomBaseUrl('https://api.anthropic.com');
+                          }
+                        }}
+                        className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-purple-500/10 border-purple-500/60 ring-2 ring-purple-500/20 shadow-sm'
+                            : 'bg-[var(--bg-page)] border-slate-200 dark:border-white/[0.08] hover:border-purple-400/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />}
+                            {provider.name}
+                          </span>
+                          {provider.isRecommended && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-600 text-white shadow-xs">
+                              {isEn ? 'Recommended' : 'Recommandé'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[var(--text-secondary)] leading-snug">
+                          {isEn ? provider.descriptionEn : provider.descriptionFr}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Gateway Base URL */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[var(--text-primary)] block">
+                    {isEn ? 'Gateway Base URL' : 'URL de Base de la Passerelle'}
+                  </label>
+                  {selectedProvider === 'mwapi' ? (
+                    <a
+                      href="https://api.mwapi.dev/home"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      {isEn ? 'MWAPI Docs' : 'Doc MWAPI'}
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : (
+                    <a
+                      href="https://docs.anthropic.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                    >
+                      Anthropic Docs
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                </div>
+                <input
+                  type="url"
+                  required
+                  value={customBaseUrl}
+                  onChange={(e) => setCustomBaseUrl(e.target.value)}
+                  placeholder={selectedProvider === 'mwapi' ? 'https://api.mwapi.dev' : 'https://api.anthropic.com'}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
+                />
+              </div>
+
+              {/* API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[var(--text-primary)] block">
+                    {selectedProvider === 'mwapi'
+                      ? (isEn ? 'MWAPI Gateway API Key' : 'Clé API MWAPI Gateway')
+                      : (isEn ? 'Anthropic API Key (sk-ant-...)' : 'Clé API Anthropic Direct (sk-ant-...)')}{' '}
+                    {!claudeConfig?.isConfigured && <span className="text-rose-500">*</span>}
+                  </label>
+                  {selectedProvider === 'mwapi' ? (
+                    <a
+                      href="https://api.mwapi.dev/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      {isEn ? 'Obtain MWAPI Key' : 'Obtenir une clé sur api.mwapi.dev/keys'}
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : (
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                    >
+                      Anthropic Console
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                </div>
                 <input
                   type="password"
                   required={!claudeConfig?.isConfigured}
@@ -473,19 +628,19 @@ export const AdminAiOperationsPage: React.FC = () => {
                   placeholder={
                     claudeConfig?.isConfigured
                       ? (isEn ? '•••••••••••••••• (Leave blank to keep current key)' : '•••••••••••••••• (Laisser vide pour conserver la clé actuelle)')
-                      : 'sk-ant-api03-...'
+                      : (selectedProvider === 'mwapi' ? 'sk-... (Clé MWAPI Gateway)' : 'sk-ant-api03-...')
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
                   autoComplete="off"
                 />
                 <span className="text-[10px] text-[var(--text-secondary)] block">
-                  {claudeConfig?.isConfigured
-                    ? isEn
-                      ? 'Leave blank to update model/budget only, or enter a new secret key to rotate.'
-                      : 'Laissez vide pour changer uniquement le modèle ou le budget, ou saisissez une nouvelle clé pour la renouveler.'
-                    : isEn
-                    ? 'The key will be encrypted in the server vault and never sent back to browsers.'
-                    : 'La clé sera chiffrée dans le coffre serveur PostgreSQL et ne sera jamais renvoyée au navigateur.'}
+                  {selectedProvider === 'mwapi'
+                    ? (isEn
+                        ? 'MWAPI credential from https://api.mwapi.dev/keys (min 16 chars). Does not require sk-ant- prefix.'
+                        : 'Identifiant délivré sur https://api.mwapi.dev/keys (min 16 car.). Ne requiert pas le préfixe sk-ant-.')
+                    : (isEn
+                        ? 'Official Anthropic direct API key starting with sk-ant- (min 25 chars).'
+                        : 'Clé API officielle Anthropic directe débutant obligatoirement par sk-ant- (min 25 car.).')}
                 </span>
               </div>
 

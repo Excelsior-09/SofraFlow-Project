@@ -419,8 +419,51 @@ export interface AdminSystemHealthReport {
   timestamp: string;
 }
 
+export type AiGatewayProvider = 'mwapi' | 'anthropic';
+
+export interface AiGatewayProviderOption {
+  id: AiGatewayProvider;
+  name: string;
+  descriptionEn: string;
+  descriptionFr: string;
+  defaultBaseUrl: string;
+  keyFormatPlaceholder: string;
+  keyValidationHintEn: string;
+  keyValidationHintFr: string;
+  isRecommended?: boolean;
+  portalUrl: string;
+}
+
+export const AVAILABLE_AI_PROVIDERS: AiGatewayProviderOption[] = [
+  {
+    id: 'mwapi',
+    name: 'MWAPI Gateway (Claude-Compatible)',
+    descriptionEn: 'High-speed Claude API Gateway unifying models with multi-provider routing.',
+    descriptionFr: 'Passerelle API Claude haute performance unifiant les modèles avec routage sécurisé.',
+    defaultBaseUrl: 'https://api.mwapi.dev',
+    keyFormatPlaceholder: 'sk-... (Clé MWAPI)',
+    keyValidationHintEn: 'Issued via https://api.mwapi.dev/keys (min 16 chars). Does not require sk-ant- prefix.',
+    keyValidationHintFr: 'Générée sur https://api.mwapi.dev/keys (min 16 car.). Ne requiert pas le préfixe sk-ant-.',
+    isRecommended: true,
+    portalUrl: 'https://api.mwapi.dev/keys'
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic Direct',
+    descriptionEn: 'Direct connection to official Anthropic API infrastructure.',
+    descriptionFr: 'Connexion directe à l’infrastructure officielle de l’API Anthropic.',
+    defaultBaseUrl: 'https://api.anthropic.com',
+    keyFormatPlaceholder: 'sk-ant-api03-...',
+    keyValidationHintEn: 'Standard Anthropic key starting with sk-ant- (min 25 chars).',
+    keyValidationHintFr: 'Clé standard Anthropic commençant obligatoirement par sk-ant- (min 25 car.).',
+    portalUrl: 'https://console.anthropic.com/settings/keys'
+  }
+];
+
 export interface ClaudeApiConfigRecord {
   isConfigured: boolean;
+  provider: AiGatewayProvider;
+  baseUrl: string;
   keyFingerprint: string | null;
   modelName: string;
   monthlyBudgetUsd: number;

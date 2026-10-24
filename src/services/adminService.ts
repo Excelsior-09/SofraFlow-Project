@@ -8,7 +8,8 @@ import {
   AdminAuditLogRecord,
   AdminSystemHealthReport,
   SubscriptionPaymentRequest,
-  ClaudeApiConfigRecord
+  ClaudeApiConfigRecord,
+  AiGatewayProvider
 } from '../types';
 
 /**
@@ -741,7 +742,9 @@ export const adminService = {
     if (!isSupabaseConfigured) {
       return {
         isConfigured: true,
-        keyFingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
+        provider: 'mwapi',
+        baseUrl: 'https://api.mwapi.dev',
+        keyFingerprint: 'sk-mwap-••••••••••••••••••••••••••••••••92xA',
         modelName: 'claude-sonnet-4-6',
         monthlyBudgetUsd: 150.0,
         maxTokensPerRequest: 4096,
@@ -758,8 +761,14 @@ export const adminService = {
     try {
       const { data, error } = await supabase.rpc('get_claude_api_config');
       if (!error && data) {
+        const rawProvider = data.provider as AiGatewayProvider;
+        const provider: AiGatewayProvider = rawProvider === 'anthropic' ? 'anthropic' : 'mwapi';
+        const defaultUrl = provider === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.mwapi.dev';
+
         return {
           isConfigured: Boolean(data.is_configured),
+          provider,
+          baseUrl: data.base_url || defaultUrl,
           keyFingerprint: data.key_fingerprint || null,
           modelName: data.model_name || 'claude-sonnet-4-6',
           monthlyBudgetUsd: Number(data.monthly_budget_usd || 100),
@@ -779,6 +788,8 @@ export const adminService = {
 
     return {
       isConfigured: false,
+      provider: 'mwapi',
+      baseUrl: 'https://api.mwapi.dev',
       keyFingerprint: null,
       modelName: 'claude-sonnet-4-6',
       monthlyBudgetUsd: 100,
@@ -795,30 +806,45 @@ export const adminService = {
 
   /**
    * Saves or rotates the Claude API key securely into server vault,
-   * or updates the default model/budget without requiring the secret key.
+   * or updates the default model/budget/provider without requiring the secret key.
+   * Supports both MWAPI Gateway (Claude-compatible) and Anthropic Direct.
    * Never exposed to frontend or logged in plain text.
    */
   async saveClaudeApiKey(
     apiKey?: string,
     model = 'claude-sonnet-4-6',
     budgetUsd = 100,
-    maxTokens = 4096
+    maxTokens = 4096,
+    provider: AiGatewayProvider = 'mwapi',
+    baseUrl = 'https://api.mwapi.dev'
   ): Promise<{ success: boolean; message?: string; error?: string; config?: ClaudeApiConfigRecord }> {
     const trimmed = (apiKey || '').trim();
+    const targetProvider: AiGatewayProvider = provider === 'anthropic' ? 'anthropic' : 'mwapi';
+    const targetBaseUrl = (baseUrl || '').trim() || (targetProvider === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.mwapi.dev');
 
-    // Model / budget update without rotating key
+    // Base URL validation
+    if (!/^https?:\/\//i.test(targetBaseUrl)) {
+      return {
+        success: false,
+        error: 'Format d’URL invalide. L’URL de base de la passerelle doit débuter par "http://" ou "https://".'
+      };
+    }
+
+    // Model / budget / provider update without rotating key
     if (!trimmed) {
       if (!isSupabaseConfigured) {
         const current = await this.getClaudeConfig();
         const updatedConfig: ClaudeApiConfigRecord = {
           ...current,
+          provider: targetProvider,
+          baseUrl: targetBaseUrl,
           modelName: model,
           monthlyBudgetUsd: budgetUsd,
           maxTokensPerRequest: maxTokens
         };
         return {
           success: true,
-          message: `Modèle Claude API configuré : ${model}`,
+          message: `Configuration mise à jour : Modèle ${model} via ${targetProvider === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct'}`,
           config: updatedConfig
         };
       }
@@ -828,35 +854,71 @@ export const adminService = {
           p_api_key: '',
           p_model: model,
           p_budget_usd: budgetUsd,
-          p_max_tokens: maxTokens
+          p_max_tokens: maxTokens,
+          p_provider: targetProvider,
+          p_base_url: targetBaseUrl
         });
 
         if (error) {
+          // Backward compatibility fallback if RPC doesn't have p_provider yet
+          if (error.message.includes('p_provider') || error.message.includes('parameters')) {
+            const { data: fbData, error: fbError } = await supabase.rpc('save_claude_api_key', {
+              p_api_key: '',
+              p_model: model,
+              p_budget_usd: budgetUsd,
+              p_max_tokens: maxTokens
+            });
+            if (fbError) return { success: false, error: fbError.message };
+            const updated = await this.getClaudeConfig();
+            return {
+              success: true,
+              message: fbData?.message || `Modèle Claude API configuré : ${model}`,
+              config: updated
+            };
+          }
           return { success: false, error: error.message };
         }
 
         const updated = await this.getClaudeConfig();
         return {
           success: true,
-          message: data?.message || `Modèle Claude API configuré : ${model}`,
+          message: data?.message || `Configuration Claude API mise à jour : ${model}`,
           config: updated
         };
       } catch (err: any) {
-        return { success: false, error: err.message || 'Erreur lors de la mise à jour du modèle.' };
+        return { success: false, error: err.message || 'Erreur lors de la mise à jour de la configuration.' };
       }
     }
 
-    if (!trimmed.startsWith('sk-ant-') || trimmed.length < 25) {
-      return {
-        success: false,
-        error: 'Format de clé invalide. La clé doit commencer par "sk-ant-" et contenir au moins 25 caractères.'
-      };
+    // Provider-aware key format validation
+    if (targetProvider === 'anthropic') {
+      if (!trimmed.startsWith('sk-ant-') || trimmed.length < 25) {
+        return {
+          success: false,
+          error: 'Format de clé invalide. La clé Anthropic Direct doit commencer par "sk-ant-" et contenir au moins 25 caractères.'
+        };
+      }
+    } else {
+      // MWAPI Gateway validation
+      if (trimmed.length < 16) {
+        return {
+          success: false,
+          error: 'Format de clé invalide. La clé MWAPI Gateway doit contenir au moins 16 caractères (obtenue sur https://api.mwapi.dev/keys).'
+        };
+      }
     }
+
+    // Generate masked fingerprint
+    const keyFingerprint = trimmed.length > 12
+      ? `${trimmed.slice(0, 8)}••••••••••••••••••••••••••••••••${trimmed.slice(-4)}`
+      : `${trimmed.slice(0, 4)}••••••••${trimmed.slice(-2)}`;
 
     if (!isSupabaseConfigured) {
       const mockConfig: ClaudeApiConfigRecord = {
         isConfigured: true,
-        keyFingerprint: `${trimmed.slice(0, 10)}••••••••••••••••••••••••••••••••${trimmed.slice(-4)}`,
+        provider: targetProvider,
+        baseUrl: targetBaseUrl,
+        keyFingerprint,
         modelName: model,
         monthlyBudgetUsd: budgetUsd,
         maxTokensPerRequest: maxTokens,
@@ -870,7 +932,7 @@ export const adminService = {
       };
       return {
         success: true,
-        message: 'Clé enregistrée en environnement de développement local.',
+        message: `Clé enregistrée avec succès pour ${targetProvider === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct'} en environnement de développement local.`,
         config: mockConfig
       };
     }
@@ -880,17 +942,35 @@ export const adminService = {
         p_api_key: trimmed,
         p_model: model,
         p_budget_usd: budgetUsd,
-        p_max_tokens: maxTokens
+        p_max_tokens: maxTokens,
+        p_provider: targetProvider,
+        p_base_url: targetBaseUrl
       });
 
       if (error) {
+        // Backward compatibility fallback if RPC doesn't have p_provider yet
+        if (error.message.includes('p_provider') || error.message.includes('parameters')) {
+          const { data: fbData, error: fbError } = await supabase.rpc('save_claude_api_key', {
+            p_api_key: trimmed,
+            p_model: model,
+            p_budget_usd: budgetUsd,
+            p_max_tokens: maxTokens
+          });
+          if (fbError) return { success: false, error: fbError.message };
+          const updated = await this.getClaudeConfig();
+          return {
+            success: true,
+            message: fbData?.message || 'Clé API enregistrée et chiffrée avec succès.',
+            config: updated
+          };
+        }
         return { success: false, error: error.message };
       }
 
       const updated = await this.getClaudeConfig();
       return {
         success: true,
-        message: data?.message || 'Clé Claude API enregistrée et configurée avec succès.',
+        message: data?.message || `Clé API enregistrée et chiffrée avec succès pour ${targetProvider === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct'}.`,
         config: updated
       };
     } catch (err: any) {
@@ -900,14 +980,16 @@ export const adminService = {
   },
 
   /**
-   * Runs a server-side health check against Claude API without exposing credentials.
+   * Runs a server-side health check against Claude API Gateway without exposing credentials.
    */
-  async testClaudeConnection(): Promise<{ success: boolean; status: string; latencyMs?: number; error?: string }> {
+  async testClaudeConnection(): Promise<{ success: boolean; status: string; latencyMs?: number; error?: string; provider?: string; baseUrl?: string }> {
     if (!isSupabaseConfigured) {
       return {
         success: true,
         status: 'healthy',
-        latencyMs: 128
+        latencyMs: 128,
+        provider: 'mwapi',
+        baseUrl: 'https://api.mwapi.dev'
       };
     }
 
@@ -920,7 +1002,9 @@ export const adminService = {
       return {
         success: Boolean(data?.success),
         status: data?.status || 'untested',
-        latencyMs: data?.latency_ms
+        latencyMs: data?.latency_ms,
+        provider: data?.provider || 'mwapi',
+        baseUrl: data?.base_url || 'https://api.mwapi.dev'
       };
     } catch (err: any) {
       console.error('[adminService] testClaudeConnection error:', err);
