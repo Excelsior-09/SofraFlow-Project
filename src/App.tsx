@@ -58,6 +58,7 @@ import { AdminSecurityPage } from './pages/admin/AdminSecurityPage';
 import { AdminSystemHealthPage } from './pages/admin/AdminSystemHealthPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 
 const SolutionSlugRedirect: React.FC = () => {
   const { industrySlug } = useParams<{ industrySlug?: string }>();
@@ -120,6 +121,10 @@ export function App() {
                   <Route path="/app/billing" element={<BillingPage />} />
                   <Route path="/app/help" element={<HelpPage />} />
                 </Route>
+
+                {/* Dedicated Super Admin Direct Entry Point */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/admin-portal/login" element={<AdminLoginPage />} />
 
                 {/* Protected Super Admin Platform Governance Routes */}
                 <Route

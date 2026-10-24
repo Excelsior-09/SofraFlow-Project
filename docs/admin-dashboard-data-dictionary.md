@@ -74,6 +74,22 @@ Detailed telemetry for Claude API operations and Zina AI features.
 - `created_at` (TIMESTAMPTZ, DEFAULT now()): Timestamp.
 - **RLS Policy:** Append-only for application roles; full access for Super Admins.
 
+#### 1.2.4 `public.platform_system_secrets` (Migration `20261024050000_secure_claude_api_configuration.sql`)
+Server-side credential vault storing Claude API keys and integration secrets with zero client read access.
+- `key_name` (TEXT, PK): Secret identifier (e.g. `'claude_api'`).
+- `encrypted_value` (TEXT, NOT NULL): Server-side encrypted credential value.
+- `key_fingerprint` (VARCHAR(64), NOT NULL): Non-sensitive masked preview (`sk-ant-api03-••••••••••••••••••••••••••••••••w9cA`).
+- `is_configured` (BOOLEAN, DEFAULT true): Whether credential is ready.
+- `model_name` (TEXT, DEFAULT `'claude-3-7-sonnet'`): Configured default AI model.
+- `monthly_budget_usd` (NUMERIC(10,2), DEFAULT 100.00): Monthly spending limit before quota lock.
+- `max_tokens_per_request` (INTEGER, DEFAULT 4096): Token execution ceiling.
+- `last_health_check_at` (TIMESTAMPTZ): Timestamp of last ping check.
+- `last_health_status` (TEXT): Operational health (`'healthy'`, `'degraded'`, `'missing_key'`).
+- `last_health_latency_ms` (INTEGER): Roundtrip health check latency in ms.
+- `last_rotated_at` (TIMESTAMPTZ): Date key was last saved or rotated.
+- `updated_by` (UUID, References `auth.users(id)`): Admin user who performed rotation.
+- **RLS Policy:** Direct SELECT denied to all regular users; strictly managed via `SECURITY DEFINER` RPCs (`get_claude_api_config`, `save_claude_api_key`, `test_claude_api_connection`, `execute_zina_ai_completion`).
+
 ---
 
 ## 2. Metric Definitions & Financial Calculations

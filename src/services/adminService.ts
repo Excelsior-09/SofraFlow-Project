@@ -7,7 +7,8 @@ import {
   AdminRestaurantRecord,
   AdminAuditLogRecord,
   AdminSystemHealthReport,
-  SubscriptionPaymentRequest
+  SubscriptionPaymentRequest,
+  ClaudeApiConfigRecord
 } from '../types';
 
 /**
@@ -730,6 +731,195 @@ export const adminService = {
     } catch (err) {
       console.error('[adminService] getAuditLogs error:', err);
       return [];
+    }
+  },
+
+  /**
+   * Retrieves Claude API configuration metadata (masked fingerprint only, no secret returned).
+   */
+  async getClaudeConfig(): Promise<ClaudeApiConfigRecord> {
+    if (!isSupabaseConfigured) {
+      return {
+        isConfigured: true,
+        keyFingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
+        modelName: 'claude-3-7-sonnet',
+        monthlyBudgetUsd: 150.0,
+        maxTokensPerRequest: 4096,
+        lastHealthCheckAt: new Date().toISOString(),
+        lastHealthStatus: 'healthy',
+        lastHealthLatencyMs: 142,
+        lastRotatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+        monthEventsCount: 28,
+        monthSpendUsd: 12.45,
+        monthSpendMad: 126.37
+      };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_claude_api_config');
+      if (!error && data) {
+        return {
+          isConfigured: Boolean(data.is_configured),
+          keyFingerprint: data.key_fingerprint || null,
+          modelName: data.model_name || 'claude-3-7-sonnet',
+          monthlyBudgetUsd: Number(data.monthly_budget_usd || 100),
+          maxTokensPerRequest: Number(data.max_tokens_per_request || 4096),
+          lastHealthCheckAt: data.last_health_check_at || null,
+          lastHealthStatus: data.last_health_status || 'untested',
+          lastHealthLatencyMs: data.last_health_latency_ms ? Number(data.last_health_latency_ms) : null,
+          lastRotatedAt: data.last_rotated_at || null,
+          monthEventsCount: Number(data.month_events_count || 0),
+          monthSpendUsd: Number(data.month_spend_usd || 0),
+          monthSpendMad: Number(data.month_spend_mad || 0)
+        };
+      }
+    } catch (err) {
+      console.warn('[adminService] getClaudeConfig error:', err);
+    }
+
+    return {
+      isConfigured: false,
+      keyFingerprint: null,
+      modelName: 'claude-3-7-sonnet',
+      monthlyBudgetUsd: 100,
+      maxTokensPerRequest: 4096,
+      lastHealthCheckAt: null,
+      lastHealthStatus: 'missing_key',
+      lastHealthLatencyMs: null,
+      lastRotatedAt: null,
+      monthEventsCount: 0,
+      monthSpendUsd: 0,
+      monthSpendMad: 0
+    };
+  },
+
+  /**
+   * Saves or rotates the Claude API key securely into server vault.
+   * Never exposed to frontend or logged in plain text.
+   */
+  async saveClaudeApiKey(
+    apiKey: string,
+    model = 'claude-3-7-sonnet',
+    budgetUsd = 100,
+    maxTokens = 4096
+  ): Promise<{ success: boolean; message?: string; error?: string; config?: ClaudeApiConfigRecord }> {
+    const trimmed = apiKey.trim();
+    if (!trimmed.startsWith('sk-ant-') || trimmed.length < 25) {
+      return {
+        success: false,
+        error: 'Format de clé invalide. La clé doit commencer par "sk-ant-" et contenir au moins 25 caractères.'
+      };
+    }
+
+    if (!isSupabaseConfigured) {
+      const mockConfig: ClaudeApiConfigRecord = {
+        isConfigured: true,
+        keyFingerprint: `${trimmed.slice(0, 10)}••••••••••••••••••••••••••••••••${trimmed.slice(-4)}`,
+        modelName: model,
+        monthlyBudgetUsd: budgetUsd,
+        maxTokensPerRequest: maxTokens,
+        lastHealthCheckAt: new Date().toISOString(),
+        lastHealthStatus: 'healthy',
+        lastHealthLatencyMs: 135,
+        lastRotatedAt: new Date().toISOString(),
+        monthEventsCount: 0,
+        monthSpendUsd: 0,
+        monthSpendMad: 0
+      };
+      return {
+        success: true,
+        message: 'Clé enregistrée en environnement de développement local.',
+        config: mockConfig
+      };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('save_claude_api_key', {
+        p_api_key: trimmed,
+        p_model: model,
+        p_budget_usd: budgetUsd,
+        p_max_tokens: maxTokens
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const updated = await this.getClaudeConfig();
+      return {
+        success: true,
+        message: data?.message || 'Clé Claude API enregistrée et configurée avec succès.',
+        config: updated
+      };
+    } catch (err: any) {
+      console.error('[adminService] saveClaudeApiKey error:', err);
+      return { success: false, error: err.message || 'Erreur lors de l’enregistrement de la clé.' };
+    }
+  },
+
+  /**
+   * Runs a server-side health check against Claude API without exposing credentials.
+   */
+  async testClaudeConnection(): Promise<{ success: boolean; status: string; latencyMs?: number; error?: string }> {
+    if (!isSupabaseConfigured) {
+      return {
+        success: true,
+        status: 'healthy',
+        latencyMs: 128
+      };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('test_claude_api_connection');
+      if (error) {
+        return { success: false, status: 'error', error: error.message };
+      }
+
+      return {
+        success: Boolean(data?.success),
+        status: data?.status || 'untested',
+        latencyMs: data?.latency_ms
+      };
+    } catch (err: any) {
+      console.error('[adminService] testClaudeConnection error:', err);
+      return { success: false, status: 'error', error: err.message };
+    }
+  },
+
+  /**
+   * Securely executes an authorized Zina AI task using the server-stored Claude key.
+   */
+  async executeZinaAiTask(
+    prompt: string,
+    feature = 'menu_generation',
+    restaurantId?: string
+  ): Promise<{ success: boolean; tokensUsed?: number; estimatedCostMad?: number; error?: string }> {
+    if (!isSupabaseConfigured) {
+      return {
+        success: true,
+        tokensUsed: 840,
+        estimatedCostMad: 0.12
+      };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('execute_zina_ai_completion', {
+        p_prompt: prompt,
+        p_feature: feature,
+        p_restaurant_id: restaurantId || null
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return {
+        success: Boolean(data?.success),
+        tokensUsed: data?.tokens_used,
+        estimatedCostMad: data?.estimated_cost_mad
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Erreur lors de l’exécution Zina AI.' };
     }
   }
 };

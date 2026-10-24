@@ -29,6 +29,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
 import { supabaseService } from '../../services/supabaseService';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { adminService } from '../../services/adminService';
 import { MENU_TEMPLATES, MenuTemplateDefinition, TemplateCategory, TemplateDishItem } from '../../data/menuTemplatesData';
 import { FoodLanguageCode } from '../../types';
 import { SofraFlowTemplateRenderer } from '../customer/SofraFlowTemplateRenderer';
@@ -142,6 +143,13 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
 
   const handleStartAnalysis = () => {
     if (!uploadedFile) return;
+    // Invoke secure server-side AI execution to verify budget and log usage
+    adminService.executeZinaAiTask(
+      uploadedFile.name,
+      'menu_scan',
+      activeRestaurant.id
+    ).catch(err => console.warn('[Zina] AI task:', err));
+
     setStep('upload_analyzing');
     setAnalyzingProgress(15);
     setAnalyzingStatus(
@@ -188,6 +196,13 @@ export const ZinaMenuCreatorModal: React.FC<ZinaMenuCreatorModalProps> = ({ isOp
   // --- OPTION B: Prompt Generation Handlers ---
   const handleStartPromptGeneration = () => {
     if (!promptText.trim()) return;
+    // Invoke secure server-side AI execution to verify budget and log usage
+    adminService.executeZinaAiTask(
+      promptText.trim(),
+      'menu_generation',
+      activeRestaurant.id
+    ).catch(err => console.warn('[Zina] AI task:', err));
+
     setStep('prompt_generating');
     setGeneratingProgress(20);
     setGeneratingStatus(

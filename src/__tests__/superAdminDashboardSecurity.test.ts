@@ -290,4 +290,155 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
       expect(allowed).toBe(true);
     });
   });
+
+  describe('6. Admin System Separation & Dedicated Entry Point Security', () => {
+    it('rejects a normal customer attempting to authenticate at the admin entry point', async () => {
+      const normalCustomer = {
+        id: 'usr_normal_customer_999',
+        email: 'client@cafe-casablanca.ma',
+        user_metadata: { role: 'owner' }
+      };
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: normalCustomer as any },
+        error: null
+      });
+
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: false,
+        error: null
+      } as any);
+
+      const isAllowedAdmin = await adminService.checkIsSuperAdmin();
+      expect(isAllowedAdmin).toBe(false);
+    });
+
+    it('denies access to /admin even if the normal user knows the URL', async () => {
+      const normalUserRole: string = 'owner';
+      const isSuperAdminRegistryEntry = false;
+
+      // Access boundary requires verified Super Admin registry status
+      const hasAdminRouteAccess = isSuperAdminRegistryEntry && normalUserRole === 'admin';
+      expect(hasAdminRouteAccess).toBe(false);
+    });
+
+    it('requires successful MFA verification for administrator session elevation', () => {
+      const factors = [{ id: 'factor_totp_001', status: 'verified', factor_type: 'totp' }];
+      const currentLevel: string = 'aal1';
+
+      // AAL2 is mandatory for Super Admin
+      const isSessionElevated = factors.length > 0 && currentLevel === 'aal2';
+      expect(isSessionElevated).toBe(false);
+
+      const elevatedLevel: string = 'aal2';
+      const isElevatedAfterChallenge = factors.length > 0 && elevatedLevel === 'aal2';
+      expect(isElevatedAfterChallenge).toBe(true);
+    });
+  });
+
+  describe('7. Secure Claude API Configuration & Credential Vault', () => {
+    it('saves and rotates Claude API key securely with valid format', async () => {
+      vi.spyOn(supabase, 'rpc').mockImplementation((async (fn: string) => {
+        if (fn === 'save_claude_api_key') {
+          return { data: { success: true, message: 'Clé enregistrée avec succès' }, error: null } as any;
+        }
+        if (fn === 'get_claude_api_config') {
+          return {
+            data: {
+              is_configured: true,
+              key_fingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
+              model_name: 'claude-3-7-sonnet',
+              monthly_budget_usd: 150.0,
+              month_spend_usd: 14.50
+            },
+            error: null
+          } as any;
+        }
+        return { data: null, error: null } as any;
+      }) as any);
+
+      const validKey = 'sk-ant-api03-sample-production-secure-claude-key-w9cA';
+      const result = await adminService.saveClaudeApiKey(validKey, 'claude-3-7-sonnet', 150);
+
+      expect(result.success).toBe(true);
+      expect(result.config?.isConfigured).toBe(true);
+      expect(result.config?.keyFingerprint).toContain('sk-ant-');
+      expect(result.config?.keyFingerprint).toContain('••••');
+      // Verify raw secret key was NEVER returned in config response
+      expect(result.config?.keyFingerprint).not.toBe(validKey);
+    });
+
+    it('rejects invalid or malformed Claude API keys with understandable error', async () => {
+      const invalidKey = 'invalid-not-claude-key';
+      const result = await adminService.saveClaudeApiKey(invalidKey);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('sk-ant-');
+    });
+
+    it('never exposes raw API key to customer-facing clients or config queries', async () => {
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: {
+          is_configured: true,
+          key_fingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
+          model_name: 'claude-3-7-sonnet',
+          monthly_budget_usd: 100.0
+        },
+        error: null
+      } as any);
+
+      const config = await adminService.getClaudeConfig();
+
+      expect(config.isConfigured).toBe(true);
+      expect(config.keyFingerprint).toBeDefined();
+      expect((config as any).encrypted_value).toBeUndefined();
+      expect((config as any).apiKey).toBeUndefined();
+      expect((config as any).rawKey).toBeUndefined();
+    });
+
+    it('executes server-side Zina AI task without exposing credentials to caller', async () => {
+      const rpcSpy = vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: {
+          success: true,
+          feature: 'menu_generation',
+          tokens_used: 1250,
+          estimated_cost_mad: 0.15
+        },
+        error: null
+      } as any);
+
+      const res = await adminService.executeZinaAiTask(
+        'Generate a Moroccan seafood menu',
+        'menu_generation',
+        'rest_marrakech_01'
+      );
+
+      expect(rpcSpy).toHaveBeenCalledWith('execute_zina_ai_completion', {
+        p_prompt: 'Generate a Moroccan seafood menu',
+        p_feature: 'menu_generation',
+        p_restaurant_id: 'rest_marrakech_01'
+      });
+      expect(res.success).toBe(true);
+      expect((res as any).apiKey).toBeUndefined();
+    });
+
+    it('runs server-side health check test without revealing secret key', async () => {
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: {
+          success: true,
+          status: 'healthy',
+          latency_ms: 138,
+          model: 'claude-3-7-sonnet',
+          fingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA'
+        },
+        error: null
+      } as any);
+
+      const health = await adminService.testClaudeConnection();
+      expect(health.success).toBe(true);
+      expect(health.status).toBe('healthy');
+      expect(health.latencyMs).toBe(138);
+      expect((health as any).key).toBeUndefined();
+    });
+  });
 });

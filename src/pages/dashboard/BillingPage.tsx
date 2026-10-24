@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { adminService } from '../../services/adminService';
 import {
   CreditCard,
   Check,
@@ -154,18 +152,6 @@ export const BillingPage: React.FC = () => {
   const [paymentRequests, setPaymentRequests] = useState<SubscriptionPaymentRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
-  // Admin verification section state — restricted to authenticated platform administrators
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
-  useEffect(() => {
-    adminService.checkIsSuperAdmin().then(setIsSuperAdminUser);
-  }, [user]);
-  const isAdminUser = isSuperAdminUser || Boolean(user?.role === 'admin' || user?.email === 'admin@sofraflow.com');
-  const showAdminSection = isAdminUser;
-  const [allAdminRequests, setAllAdminRequests] = useState<SubscriptionPaymentRequest[]>([]);
-  const [adminFilter, setAdminFilter] = useState<'all' | 'under_review' | 'approved' | 'rejected'>('all');
-  const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [isProcessingAdminAction, setIsProcessingAdminAction] = useState(false);
 
   // Receipt viewer modal
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
@@ -226,29 +212,10 @@ export const BillingPage: React.FC = () => {
     }
   };
 
-  // Load all payment requests for admin panel
-  const loadAdminRequests = async () => {
-    try {
-      if (isSupabaseConfigured) {
-        const remoteAll = await supabaseService.getPaymentRequests(undefined, true);
-        setAllAdminRequests(remoteAll);
-      } else {
-        const localAll = db.getPaymentRequests(undefined, true);
-        setAllAdminRequests(localAll);
-      }
-    } catch (err) {
-      const localAll = db.getPaymentRequests(undefined, true);
-      setAllAdminRequests(localAll);
-    }
-  };
-
   useEffect(() => {
     loadRequests();
     loadRestaurantStats();
-    if (showAdminSection) {
-      loadAdminRequests();
-    }
-  }, [activeRestaurant?.id, showAdminSection]);
+  }, [activeRestaurant?.id]);
 
   if (!activeRestaurant) {
     return (
@@ -377,9 +344,6 @@ export const BillingPage: React.FC = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
 
       await loadRequests();
-      if (showAdminSection) {
-        await loadAdminRequests();
-      }
     } catch (err: any) {
       console.error('Error submitting payment proof:', err);
       setFormErrorMessage(err?.message || (isEn ? "Error submitting payment proof. Please try again." : "Erreur lors de la transmission du justificatif. Veuillez réessayer."));
@@ -388,95 +352,8 @@ export const BillingPage: React.FC = () => {
     }
   };
 
-  // Admin approval action
-  const handleAdminApprove = async (request: SubscriptionPaymentRequest) => {
-    const confirmMsg = isEn
-      ? `Confirm approval of payment of ${request.amount} MAD for restaurant "${request.restaurantName || request.restaurantId}"?\n\nThis action will immediately activate the "${request.plan.toUpperCase()}" subscription.`
-      : `Confirmer l'approbation du paiement de ${request.amount} MAD pour le restaurant "${request.restaurantName || request.restaurantId}" ?\n\nCette action activera immédiatement l'abonnement "${request.plan.toUpperCase()}".`;
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
-    setIsProcessingAdminAction(true);
-    try {
-      const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
-
-      if (isSupabaseConfigured) {
-        try {
-          const res = await adminService.approvePayment(request.id, `Approved by ${verifierName}`);
-          if (!res.success && res.error) {
-            throw new Error(res.error);
-          }
-        } catch {
-          await supabaseService.updatePaymentRequestStatus(request.id, 'approved', {
-            verifierId: verifierName
-          });
-        }
-      }
-      db.updatePaymentRequestStatus(request.id, 'approved', {
-        verifierId: verifierName
-      });
-
-      await refreshState();
-      await loadRequests();
-      await loadAdminRequests();
-    } catch (err: any) {
-      console.error('Error approving payment request:', err);
-      alert((isEn ? "Error approving payment: " : "Erreur lors de l'approbation : ") + (err.message || (isEn ? 'Action failed' : 'Action impossible')));
-    } finally {
-      setIsProcessingAdminAction(false);
-    }
-  };
-
-  // Admin rejection action
-  const handleAdminRejectSubmit = async () => {
-    if (!rejectingRequestId) return;
-    if (!rejectionReason.trim()) {
-      alert(isEn ? "Please enter a specific rejection reason to inform the client." : "Veuillez indiquer un motif de refus précis pour informer le client.");
-      return;
-    }
-
-    setIsProcessingAdminAction(true);
-    try {
-      const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
-
-      if (isSupabaseConfigured) {
-        try {
-          const res = await adminService.rejectPayment(rejectingRequestId, rejectionReason.trim());
-          if (!res.success && res.error) {
-            throw new Error(res.error);
-          }
-        } catch {
-          await supabaseService.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
-            reason: rejectionReason.trim(),
-            verifierId: verifierName
-          });
-        }
-      }
-      db.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
-        reason: rejectionReason.trim(),
-        verifierId: verifierName
-      });
-
-      setRejectingRequestId(null);
-      setRejectionReason('');
-      await loadRequests();
-      await loadAdminRequests();
-    } catch (err: any) {
-      console.error('Error rejecting payment request:', err);
-      alert((isEn ? "Error rejecting payment: " : "Erreur lors du refus : ") + (err.message || (isEn ? 'Action failed' : 'Action impossible')));
-    } finally {
-      setIsProcessingAdminAction(false);
-    }
-  };
-
   const currentPlan = activeRestaurant.subscriptionPlan || 'growth';
   const currentPlanInfo = SUBSCRIPTION_PLAN_PRICING[currentPlan as keyof typeof SUBSCRIPTION_PLAN_PRICING] || SUBSCRIPTION_PLAN_PRICING.growth;
-
-  const filteredAdminRequests = allAdminRequests.filter(req => {
-    if (adminFilter === 'all') return true;
-    return req.status === adminFilter;
-  });
 
   return (
     <DashboardLayout>
@@ -488,11 +365,6 @@ export const BillingPage: React.FC = () => {
               <span className="text-[11px] font-bold uppercase tracking-wider text-forest dark:text-gold bg-forest/10 dark:bg-gold/15 px-2.5 py-0.5 rounded-full">
                 Maroc & Paiements Locaux
               </span>
-              {isAdminUser && (
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2.5 py-0.5 rounded-full">
-                  Administrateur
-                </span>
-              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-forest dark:text-dark-text font-display">
               {t('navigation.subscriptionBilling') || 'Abonnement et paiement'}
@@ -1789,158 +1661,7 @@ export const BillingPage: React.FC = () => {
           )}
         </div>
 
-        {/* 6. ADMINISTRATIVE PAYMENT VERIFICATION PANEL (ONLY FOR ADMINS / TEST MODE) */}
-        {showAdminSection && (
-          <div className="space-y-4 pt-6 border-t-2 border-purple-200 dark:border-purple-900/50">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse" />
-                  <h2 className="text-lg sm:text-xl font-bold text-purple-950 dark:text-purple-200 font-display">
-                    {isEn ? "Admin Area — Payment Verification" : "Espace Administrateur — Vérification des paiements"}
-                  </h2>
-                </div>
-                <p className="text-xs text-ink-secondary dark:text-dark-secondary mt-0.5">
-                  {isEn ? "Financial verification of bank transfers and secure subscription activations." : "Vérification financière des virements bancaires et activations sécurisées d'abonnements."}
-                </p>
-              </div>
 
-              {/* Link to dedicated Super Admin reconciliation portal with MFA */}
-              <Link
-                to="/admin/payments"
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                {isEn ? "Open Super Admin Portal →" : "Ouvrir Portail Super Admin →"}
-              </Link>
-
-              {/* Status filter */}
-              <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
-                {(['all', 'under_review', 'approved', 'rejected'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setAdminFilter(tab)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                      adminFilter === tab
-                        ? 'bg-purple-700 text-white'
-                        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 hover:bg-purple-200'
-                    }`}
-                  >
-                    {tab === 'all' && (isEn ? 'All' : 'Tous')}
-                    {tab === 'under_review' && (isEn ? 'To verify' : 'À vérifier')}
-                    {tab === 'approved' && (isEn ? 'Approved' : 'Validés')}
-                    {tab === 'rejected' && (isEn ? 'Rejected' : 'Refusés')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {filteredAdminRequests.length === 0 ? (
-              <Card className="p-6 text-center bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50">
-                <p className="text-xs text-purple-900 dark:text-purple-300 font-semibold">
-                  {isEn ? "No requests found with this filter." : "Aucune demande trouvée avec ce filtre."}
-                </p>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredAdminRequests.map(req => (
-                  <Card
-                    key={req.id}
-                    className="p-4 bg-white dark:bg-dark-card border border-purple-200 dark:border-purple-900/40 shadow-xs"
-                  >
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-sm text-forest dark:text-dark-text">
-                            {req.restaurantName || req.restaurantId}
-                          </span>
-                          <span className="text-xs text-ink-secondary dark:text-dark-muted">• {req.userName}</span>
-                          <Badge
-                            variant={
-                              req.status === 'approved'
-                                ? 'success'
-                                : req.status === 'rejected'
-                                ? 'error'
-                                : 'warning'
-                            }
-                            size="sm"
-                          >
-                            {req.status === 'approved' ? (isEn ? 'Approved' : 'Validé') : req.status === 'rejected' ? (isEn ? 'Rejected' : 'Refusé') : (isEn ? 'To verify' : 'À vérifier')}
-                          </Badge>
-                        </div>
-
-                        <div className="text-xs text-ink-secondary dark:text-dark-secondary flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span>{isEn ? 'Plan: ' : 'Formule : '}<strong>{req.plan.toUpperCase()}</strong></span>
-                          <span>•</span>
-                          <span>{isEn ? 'Amount: ' : 'Montant : '}<strong className="text-forest dark:text-gold">{req.amount} MAD</strong></span>
-                          <span>•</span>
-                          <span>{isEn ? 'Method: ' : 'Méthode : '}<strong className="capitalize text-forest dark:text-gold">{getMethodDisplayName(req.paymentMethod)}</strong></span>
-                          <span>•</span>
-                          <span>{isEn ? 'Ref: ' : 'Réf : '}<strong className="font-mono text-ink-main dark:text-dark-text">{req.transactionReference}</strong></span>
-                        </div>
-
-                        {req.payerName && (
-                          <p className="text-[11px] text-ink-secondary dark:text-dark-muted">
-                            {isEn ? 'Declared sender: ' : 'Émetteur déclaré : '}{req.payerName} {req.payerPhone ? `(${req.payerPhone})` : ''}
-                          </p>
-                        )}
-                        {req.notes && (
-                          <p className="text-[11px] italic text-ink-secondary dark:text-dark-muted">
-                            {isEn ? 'Client note: ' : 'Note client : '}"{req.notes}"
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
-                        {req.receiptUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewingReceiptUrl(req.receiptUrl!)}
-                            className="text-xs h-8 px-2.5 flex items-center gap-1 border-purple-300"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>{isEn ? "View receipt" : "Voir le reçu"}</span>
-                          </Button>
-                        )}
-
-                        {req.status !== 'approved' && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            disabled={isProcessingAdminAction}
-                            onClick={() => handleAdminApprove(req)}
-                            className="text-xs h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>{isEn ? "Approve payment" : "Approuver le paiement"}</span>
-                          </Button>
-                        )}
-
-                        {req.status !== 'rejected' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isProcessingAdminAction}
-                            onClick={() => {
-                              setRejectingRequestId(req.id);
-                              setRejectionReason('');
-                            }}
-                            className="text-xs h-8 px-3 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center gap-1.5"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>{isEn ? "Reject" : "Refuser"}</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* MODAL: QR Code Zoom */}
         <Modal
@@ -2005,48 +1726,7 @@ export const BillingPage: React.FC = () => {
           )}
         </Modal>
 
-        {/* MODAL: Admin Rejection with Reason */}
-        <Modal
-          isOpen={!!rejectingRequestId}
-          onClose={() => setRejectingRequestId(null)}
-          title={isEn ? "Reject payment request" : "Refuser la demande de paiement"}
-          description={isEn ? "Provide the client with a rejection reason so they can correct their payment." : "Indiquez au client le motif du refus afin qu'il puisse corriger son règlement."}
-        >
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-forest dark:text-dark-text block">
-                {isEn ? "Rejection reason (visible to client)" : "Motif du refus (visible par le client)"} <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                rows={3}
-                value={rejectionReason}
-                onChange={e => setRejectionReason(e.target.value)}
-                placeholder={isEn ? "e.g. Transfer not received on account, incomplete amount, or reference not found." : "Ex: Virement non réceptionné sur le compte, montant incomplet, ou référence introuvable."}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-surface text-xs text-ink-main dark:text-dark-text focus:outline-hidden focus:ring-2 focus:ring-red-400"
-              />
-            </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle dark:border-dark-border">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setRejectingRequestId(null)}
-                disabled={isProcessingAdminAction}
-              >
-                {isEn ? "Cancel" : "Annuler"}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleAdminRejectSubmit}
-                disabled={isProcessingAdminAction || !rejectionReason.trim()}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
-              >
-                {isProcessingAdminAction ? (isEn ? 'Processing...' : 'Traitement...') : (isEn ? 'Confirm rejection' : 'Confirmer le refus')}
-              </Button>
-            </div>
-          </div>
-        </Modal>
       </div>
     </DashboardLayout>
   );

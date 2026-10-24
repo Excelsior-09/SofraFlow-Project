@@ -419,4 +419,19 @@ export interface AdminSystemHealthReport {
   timestamp: string;
 }
 
+export interface ClaudeApiConfigRecord {
+  isConfigured: boolean;
+  keyFingerprint: string | null;
+  modelName: string;
+  monthlyBudgetUsd: number;
+  maxTokensPerRequest: number;
+  lastHealthCheckAt: string | null;
+  lastHealthStatus: 'healthy' | 'degraded' | 'error' | 'missing_key' | 'untested';
+  lastHealthLatencyMs: number | null;
+  lastRotatedAt: string | null;
+  monthEventsCount: number;
+  monthSpendUsd: number;
+  monthSpendMad: number;
+}
+
 

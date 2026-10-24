@@ -94,9 +94,9 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
     );
   }
 
-  // 2. Redirect to Login if unauthenticated
+  // 2. Redirect to Dedicated Admin Login Entry Point if unauthenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   // 3. Mandatory 2FA/MFA Challenge Gateway for Super Admin

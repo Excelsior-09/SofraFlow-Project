@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Settings,
   CreditCard,
@@ -100,18 +101,28 @@ export const AdminSettingsPage: React.FC = () => {
 
         {/* AI Quotas & Thresholds */}
         <Card className="p-5 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
-              <Cpu className="w-4 h-4" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                <Cpu className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
+                  {isEn ? 'Zina AI Consumption Quotas & Cost Controls' : 'Plafonds de Consommation & Alertes Coûts IA Zina'}
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {isEn ? 'Configure maximum allowable Claude API spend per calendar month before alerting.' : 'Définition du seuil d’alerte de dépenses mensuelles pour l’API Claude.'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
-                {isEn ? 'Zina AI Consumption Quotas & Cost Controls' : 'Plafonds de Consommation & Alertes Coûts IA Zina'}
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)]">
-                {isEn ? 'Configure maximum allowable Claude API spend per calendar month before alerting.' : 'Définition du seuil d’alerte de dépenses mensuelles pour l’API Claude.'}
-              </p>
-            </div>
+
+            <Link
+              to="/admin/ai-operations"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs shrink-0 self-start sm:self-auto"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{isEn ? "Open Claude Vault →" : "Ouvrir Coffre Claude →"}</span>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
