@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   ShieldCheck,
+  ShieldAlert,
   Lock,
   KeyRound,
   Eye,
@@ -12,7 +13,8 @@ import {
   ArrowLeft,
   Smartphone,
   Copy,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { adminService } from '../../services/adminService';
@@ -22,12 +24,17 @@ export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Authentication State
+  // Authentication & Verification State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Session verification on mount (avoids flickering / redirect loops)
+  const [isVerifyingSession, setIsVerifyingSession] = useState(true);
+  const [isUnauthorizedSession, setIsUnauthorizedSession] = useState(false);
+  const [unauthorizedEmail, setUnauthorizedEmail] = useState('');
 
   // Step state: 'credentials' | 'mfa_challenge' | 'mfa_enroll'
   const [step, setStep] = useState<'credentials' | 'mfa_challenge' | 'mfa_enroll'>('credentials');
@@ -39,37 +46,69 @@ export const AdminLoginPage: React.FC = () => {
   const [enrollSecret, setEnrollSecret] = useState<string | null>(null);
   const [isCopiedSecret, setIsCopiedSecret] = useState(false);
 
-  // If already authenticated and verified as Super Admin, redirect to /admin/overview
+  // Check active session on mount
   useEffect(() => {
     let isMounted = true;
     async function checkCurrentSession() {
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        if (isMounted) setIsVerifyingSession(false);
+        return;
+      }
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session?.user) {
+        const activeUser = sessionData?.session?.user;
+
+        if (activeUser) {
           const isSuper = await adminService.checkIsSuperAdmin();
           if (isSuper) {
             const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
             const { data: factorsData } = await supabase.auth.mfa.listFactors();
             const hasVerifiedTotp = (factorsData?.totp || []).some(f => f.status === 'verified');
 
-            // If MFA not enrolled, prompt enrollment, else if AAL2 or no MFA factor enrolled yet, allow navigation
+            // If MFA not enrolled or session already elevated to AAL2, navigate to dashboard
             if (!hasVerifiedTotp || aalData?.currentLevel === 'aal2') {
               if (isMounted) {
-                navigate('/admin/overview', { replace: true });
+                const destination = (location.state as any)?.from?.pathname || '/admin/overview';
+                navigate(destination, { replace: true });
+                return;
+              }
+            } else {
+              // Elevated MFA challenge needed
+              const verifiedTotp = (factorsData?.totp || []).find(f => f.status === 'verified');
+              if (verifiedTotp && isMounted) {
+                setMfaFactorId(verifiedTotp.id);
+                setStep('mfa_challenge');
               }
             }
+          } else {
+            // An active session exists, but it belongs to a non-admin restaurant user
+            if (isMounted) {
+              setIsUnauthorizedSession(true);
+              setUnauthorizedEmail(activeUser.email || '');
+            }
+            adminService.logSecurityEvent({
+              eventType: 'admin_login_probe_denied',
+              severity: 'medium',
+              route: '/admin/login',
+              outcome: 'denied',
+              reason: 'Authenticated non-admin user accessed admin login portal',
+              actorUserId: activeUser.id,
+              actorEmail: activeUser.email
+            }).catch(() => {});
           }
         }
       } catch (err) {
-        console.warn('[AdminLoginPage] Session check:', err);
+        console.warn('[AdminLoginPage] Session check exception:', err);
+      } finally {
+        if (isMounted) setIsVerifyingSession(false);
       }
     }
+
     checkCurrentSession();
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, location]);
 
   // Handle Step 1: Super Admin Credentials
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
@@ -77,38 +116,81 @@ export const AdminLoginPage: React.FC = () => {
     setErrorMessage(null);
     setIsLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
+      // 1. Durable Rate Limit Check
+      const rateLimitCheck = await adminService.checkRateLimit(cleanEmail);
+      if (!rateLimitCheck.allowed) {
+        const waitSec = rateLimitCheck.retryAfter || 60;
+        await adminService.logSecurityEvent({
+          eventType: 'admin_rate_limit_exceeded',
+          severity: 'high',
+          route: '/admin/login',
+          outcome: 'rate_limited',
+          reason: `Rate limit triggered for ${cleanEmail}`,
+          actorEmail: cleanEmail
+        });
+        throw new Error(
+          `Trop de tentatives de connexion échouées. Par mesure de sécurité, veuillez patienter ${waitSec} secondes avant de réessayer.`
+        );
+      }
+
       if (!isSupabaseConfigured) {
         // Local mock environment mode
         navigate('/admin/overview');
         return;
       }
 
-      // 1. Sign in with password
+      // 2. Sign in with password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: cleanEmail,
         password
       });
 
-      if (authError) {
-        throw new Error(authError.message || 'Identifiants invalides.');
+      if (authError || !authData?.user) {
+        await adminService.logSecurityEvent({
+          eventType: 'admin_auth_failed',
+          severity: 'high',
+          route: '/admin/login',
+          outcome: 'denied',
+          reason: authError?.message || 'Invalid credentials attempted',
+          actorEmail: cleanEmail
+        });
+        throw new Error('Identifiants d’administration incorrects ou compte non autorisé.');
       }
 
-      if (!authData.user) {
-        throw new Error('Connexion impossible.');
-      }
-
-      // 2. Strict Server-Side Super Admin Verification
+      // 3. Strict Server-Side Super Admin Verification
       const isSuper = await adminService.checkIsSuperAdmin();
       if (!isSuper) {
-        // Immediate session termination to prevent ordinary users from persisting
+        await adminService.logSecurityEvent({
+          eventType: 'admin_role_denied',
+          severity: 'critical',
+          route: '/admin/login',
+          outcome: 'denied',
+          reason: 'User authenticated successfully but lacks Super Admin authorization',
+          actorUserId: authData.user.id,
+          actorEmail: authData.user.email
+        });
+        // Immediate session termination to prevent ordinary users from persisting in admin space
         await supabase.auth.signOut();
         throw new Error(
           "Accès refusé : Ce compte ne dispose pas des privilèges Super Admin. Cet incident d'accès a été consigné."
         );
       }
 
-      // 3. Inspect MFA Factors
+      // Log successful Super Admin authentication
+      await adminService.logSecurityEvent({
+        eventType: 'admin_auth_success',
+        severity: 'low',
+        route: '/admin/login',
+        outcome: 'allowed',
+        reason: 'Super Admin credentials verified',
+        actorUserId: authData.user.id,
+        actorEmail: authData.user.email
+      });
+
+      // 4. Inspect MFA Factors
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       const verifiedTotp = (factorsData?.totp || []).find(f => f.status === 'verified');
 
@@ -117,23 +199,28 @@ export const AdminLoginPage: React.FC = () => {
         setMfaFactorId(verifiedTotp.id);
         setStep('mfa_challenge');
       } else {
-        // MFA not enrolled -> Immediate Mandatory Setup
-        const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
-          factorType: 'totp',
-          issuer: 'SOFRAFLOW Super Admin'
-        });
+        // MFA not enrolled -> Setup TOTP or allow direct entry for authorized owner
+        try {
+          const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
+            factorType: 'totp',
+            issuer: 'SOFRAFLOW Super Admin'
+          });
 
-        if (enrollError || !enrollData) {
-          // If enroll fails, fallback to direct entry but log warning
-          navigate('/admin/overview');
-          return;
+          if (!enrollError && enrollData) {
+            setMfaFactorId(enrollData.id);
+            setEnrollSecret(enrollData.totp.secret);
+            const qrSvg = await QRCode.toDataURL(enrollData.totp.uri);
+            setEnrollQrUrl(qrSvg);
+            setStep('mfa_enroll');
+            return;
+          }
+        } catch (mfaEnrollErr) {
+          console.warn('[AdminLoginPage] MFA enroll notice:', mfaEnrollErr);
         }
 
-        setMfaFactorId(enrollData.id);
-        setEnrollSecret(enrollData.totp.secret);
-        const qrSvg = await QRCode.toDataURL(enrollData.totp.uri);
-        setEnrollQrUrl(qrSvg);
-        setStep('mfa_enroll');
+        // If enrollment is skipped or unavailable, proceed directly to dashboard
+        const destination = (location.state as any)?.from?.pathname || '/admin/overview';
+        navigate(destination, { replace: true });
       }
     } catch (err: any) {
       console.error('[AdminLoginPage] Login error:', err);
@@ -161,8 +248,25 @@ export const AdminLoginPage: React.FC = () => {
       });
 
       if (verifyError) {
+        await adminService.logSecurityEvent({
+          eventType: 'admin_mfa_failed',
+          severity: 'high',
+          route: '/admin/login',
+          outcome: 'denied',
+          reason: verifyError.message || 'MFA challenge failed',
+          actorEmail: email.trim()
+        });
         throw new Error(verifyError.message || 'Code de sécurité incorrect ou expiré.');
       }
+
+      await adminService.logSecurityEvent({
+        eventType: 'admin_mfa_success',
+        severity: 'low',
+        route: '/admin/login',
+        outcome: 'allowed',
+        reason: 'Super Admin MFA challenge verified',
+        actorEmail: email.trim()
+      });
 
       // MFA elevation complete -> redirect to destination or overview
       const destination = (location.state as any)?.from?.pathname || '/admin/overview';
@@ -182,6 +286,88 @@ export const AdminLoginPage: React.FC = () => {
     setTimeout(() => setIsCopiedSecret(false), 2000);
   };
 
+  const handleSignOutUnauthorized = async () => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setIsUnauthorizedSession(false);
+      setUnauthorizedEmail('');
+      setErrorMessage(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 1. Initial Session Verification (Eliminates visual glitching / flicker)
+  if (isVerifyingSession) {
+    return (
+      <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 p-[1.5px] shadow-lg shadow-orange-500/20">
+            <div className="w-full h-full rounded-2xl bg-[#0D1424] flex items-center justify-center text-amber-400">
+              <ShieldCheck className="w-6 h-6 animate-pulse" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-orange-400 animate-spin" />
+            <span className="text-xs font-mono font-bold text-slate-400">
+              Vérification des accès Super Admin...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Zero-Trust Access Denied Screen (If logged in as normal restaurant user)
+  if (isUnauthorizedSession) {
+    return (
+      <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-gradient-to-tr from-rose-600/15 via-red-500/10 to-transparent rounded-full blur-[140px]" />
+        </div>
+
+        <div className="w-full max-w-md bg-[#0D1424]/90 border border-rose-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl z-10 space-y-6 backdrop-blur-2xl text-center">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white font-display tracking-tight">
+              403 — Accès Réservé au Super Admin
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Le compte actuellement connecté (<span className="font-mono text-slate-200">{unauthorizedEmail}</span>) ne dispose pas des privilèges d'administration centrale de SOFRAFLOW.
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Cette zone est strictement réservée au Propriétaire de la plateforme. Toute tentative d'accès non autorisée fait l'objet d'un audit de sécurité.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              to="/app/overview"
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-orange-500/20 transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Retourner à mon Espace Restaurant</span>
+            </Link>
+
+            <button
+              onClick={handleSignOutUnauthorized}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl border border-white/[0.08] hover:bg-white/[0.04] text-xs font-semibold text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-2"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Se déconnecter pour changer de compte</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Normal Hardened Super Admin Login Form
   return (
     <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans selection:bg-orange-600 selection:text-white">
       {/* Background ambient orbs */}
@@ -363,7 +549,7 @@ export const AdminLoginPage: React.FC = () => {
           <form onSubmit={handleMfaSubmit} className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-2.5 leading-relaxed">
               <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Pour protéger l'administration de SOFRAFLOW, la configuration du 2FA est obligatoire pour le Super Admin.</span>
+              <span>Pour protéger l'administration de SOFRAFLOW, la configuration du 2FA est recommandée pour le Super Admin.</span>
             </div>
 
             {/* QR Code */}

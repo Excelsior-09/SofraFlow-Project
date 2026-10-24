@@ -584,5 +584,22 @@ export const AVAILABLE_CLAUDE_MODELS: ClaudeModelOption[] = [
   }
 ];
 
+export interface AdminSecurityEvent {
+  id: string;
+  eventType: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  route?: string;
+  method?: string;
+  statusCode?: number;
+  outcome: 'allowed' | 'denied' | 'rate_limited';
+  reason?: string;
+  clientIp?: string;
+  userAgent?: string;
+  actorUserId?: string;
+  actorEmail?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
 
 

@@ -47,6 +47,17 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
         if (isMounted) {
           setIsSuperAdmin(isAdmin);
         }
+        if (!isAdmin && user) {
+          adminService.logSecurityEvent({
+            eventType: 'admin_route_forbidden',
+            severity: 'high',
+            route: location.pathname,
+            outcome: 'denied',
+            reason: 'Non-admin user blocked by AdminRoute guard',
+            actorUserId: user.id,
+            actorEmail: user.email
+          }).catch(() => {});
+        }
       } catch (err) {
         console.error('[AdminRoute] Failed to verify super admin status:', err);
         if (isMounted) setIsSuperAdmin(false);
@@ -60,7 +71,7 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated, isAuthLoading, user?.id]);
+  }, [isAuthenticated, isAuthLoading, user?.id, location.pathname]);
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

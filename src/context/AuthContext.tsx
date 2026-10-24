@@ -100,6 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[Auth] getProfile warning:', profErr);
       }
 
+      const normalizedEmail = (authUserEmail || '').toLowerCase().trim();
+      const isKnownSuperAdmin = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(normalizedEmail);
+
       let metaPhone = '';
       if (!prof) {
         try {
@@ -110,9 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: authUserId,
           fullName: metaFullName || authUserEmail.split('@')[0],
           phone: metaPhone,
-          role: 'owner',
+          role: isKnownSuperAdmin ? 'admin' : 'owner',
           preferredLanguage: 'fr'
         };
+      } else if (isKnownSuperAdmin && prof.role !== 'admin') {
+        prof = { ...prof, role: 'admin' };
       }
       setProfile(prof);
 
@@ -134,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setAllRestaurants(availableRestaurants);
 
-      // 3. Determine active restaurant
+      // 3. Determine active restaurant (Super Admins are NOT required to have a restaurant)
       const storedActiveId = localStorage.getItem(ACTIVE_REST_KEY);
       const matched =
         availableRestaurants.find(r => r.id === storedActiveId) ||
@@ -156,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: prof?.phone || metaPhone || prev?.phone || '',
         avatarUrl: prof?.avatarUrl || prev?.avatarUrl || '',
         restaurantId: matched?.id || '',
-        role: prof?.role || prev?.role || 'owner',
+        role: prof?.role || (isKnownSuperAdmin ? 'admin' : (prev?.role || 'owner')),
         preferredLanguage: (prof?.preferredLanguage as any) || prev?.preferredLanguage || 'fr'
       }));
       setIsDemoMode(false);
@@ -245,6 +250,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // Set user object to unblock routing
+          const sessionEmailNorm = (session.user.email || '').toLowerCase().trim();
+          const isKnownAdmin = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(sessionEmailNorm);
+
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -252,7 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: session.user.user_metadata?.phone || '',
             avatarUrl: '',
             restaurantId: '',
-            role: 'owner',
+            role: isKnownAdmin ? 'admin' : 'owner',
             preferredLanguage: 'fr'
           });
           setIsLoading(false);
@@ -295,6 +303,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           if (session?.user) {
+            const authEmailNorm = (session.user.email || '').toLowerCase().trim();
+            const isAdminEvt = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(authEmailNorm);
+
             setUser(prev => ({
               id: session.user.id,
               email: session.user.email || '',
@@ -302,7 +313,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phone: session.user.user_metadata?.phone || prev?.phone || '',
               avatarUrl: prev?.avatarUrl || '',
               restaurantId: prev?.restaurantId || '',
-              role: prev?.role || 'owner',
+              role: prev?.role || (isAdminEvt ? 'admin' : 'owner'),
               preferredLanguage: prev?.preferredLanguage || 'fr'
             }));
             setIsLoading(false);

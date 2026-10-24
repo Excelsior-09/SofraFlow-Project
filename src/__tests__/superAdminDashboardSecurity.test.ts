@@ -600,6 +600,112 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
       expect(testRes.latencyMs).toBeGreaterThan(0);
     });
   });
+
+  describe('8. Zero-Trust Access Ledger, Owner Provisioning & Rate Limiting Tests', () => {
+    it('recognizes legitimate platform owner email zeraouiianass@gmail.com as Super Admin', async () => {
+      const mockOwnerUser = {
+        id: '4f12fdc4-9c1b-4413-815a-cb51a9149f3b',
+        email: 'zeraouiianass@gmail.com'
+      };
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: mockOwnerUser as any },
+        error: null
+      });
+
+      // Even if RPC is not deployed yet, owner email fallback grants Super Admin authority
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: null,
+        error: { message: 'function is_super_admin() does not exist' }
+      } as any);
+
+      const mockFrom = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+            }),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+          })
+        })
+      });
+      vi.spyOn(supabase, 'from').mockImplementation(mockFrom as any);
+
+      const isAdmin = await adminService.checkIsSuperAdmin();
+      expect(isAdmin).toBe(true);
+    });
+
+    it('logs administrative security events to the audit ledger', async () => {
+      const rpcSpy = vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: { success: true },
+        error: null
+      } as any);
+
+      const logged = await adminService.logSecurityEvent({
+        eventType: 'admin_login_success',
+        severity: 'low',
+        route: '/admin/login',
+        method: 'POST',
+        statusCode: 200,
+        outcome: 'allowed',
+        reason: 'Super Admin credentials verified',
+        clientIp: '196.113.88.14',
+        actorEmail: 'zeraouiianass@gmail.com'
+      });
+
+      expect(logged).toBe(true);
+      expect(rpcSpy).toHaveBeenCalledWith(
+        'log_admin_security_event',
+        expect.objectContaining({
+          p_event_type: 'admin_login_success',
+          p_outcome: 'allowed',
+          p_actor_email: 'zeraouiianass@gmail.com'
+        })
+      );
+    });
+
+    it('retrieves security events with proper mapping and fallback', async () => {
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: [
+          {
+            id: 'ev-1',
+            event_type: 'admin_probe_blocked',
+            severity: 'medium',
+            route: '/admin/settings',
+            method: 'GET',
+            status_code: 403,
+            outcome: 'denied',
+            reason: 'Unauthenticated probe on restricted admin route',
+            client_ip: '105.159.24.110',
+            user_agent: 'curl/7.88.1',
+            actor_user_id: null,
+            actor_email: null,
+            metadata: {},
+            created_at: new Date().toISOString()
+          }
+        ],
+        error: null
+      } as any);
+
+      const events = await adminService.getSecurityEvents(10);
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0].eventType).toBe('admin_probe_blocked');
+      expect(events[0].outcome).toBe('denied');
+      expect(events[0].statusCode).toBe(403);
+    });
+
+    it('enforces durable rate limits against brute force login attacks', async () => {
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: { allowed: false, remaining: 0, retry_after: 840 },
+        error: null
+      } as any);
+
+      const rateCheck = await adminService.checkRateLimit('attacker@probe.com', 5, 900);
+      expect(rateCheck.allowed).toBe(false);
+      expect(rateCheck.remaining).toBe(0);
+      expect(rateCheck.retryAfter).toBe(840);
+    });
+  });
 });
 
 
