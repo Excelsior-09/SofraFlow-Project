@@ -147,7 +147,7 @@ export const AdminFinancePage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-orange text-white font-bold text-xs hover:bg-orange-700 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs transition-all shadow-md shadow-orange-500/20 active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{isEn ? 'Record Expense' : 'Enregistrer une Dépense'}</span>
@@ -156,7 +156,7 @@ export const AdminFinancePage: React.FC = () => {
           <button
             onClick={loadData}
             disabled={isLoading}
-            className="p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-brand-orange transition-colors"
+            className="p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-orange-500 hover:bg-[var(--bg-card-hover)] transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -166,53 +166,59 @@ export const AdminFinancePage: React.FC = () => {
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Collected */}
-        <Card className="p-5">
+        <Card className="p-5 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-200">
           <div className="flex justify-between items-center text-[var(--text-secondary)]">
-            <span className="text-xs font-bold uppercase tracking-wider">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">
               {isEn ? 'Verified Cash Inflows' : 'Encaissements Vérifiés'}
             </span>
-            <BadgeCheck className="w-4 h-4 text-emerald-600" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-xs">
+              <BadgeCheck className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400 font-display">
+          <div className="mt-3 text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-display tracking-tight">
             {formatMAD(totalCollectedRevenue)}
           </div>
-          <div className="text-[11px] text-[var(--text-secondary)] mt-1">
+          <div className="text-[11px] text-[var(--text-secondary)] mt-2">
             {isEn ? 'Approved bank transfers to date' : 'Virements bancaires validés à ce jour'}
           </div>
         </Card>
 
         {/* Operating Expenses */}
-        <Card className="p-5">
+        <Card className="p-5 relative overflow-hidden group hover:border-rose-500/30 transition-all duration-200">
           <div className="flex justify-between items-center text-[var(--text-secondary)]">
-            <span className="text-xs font-bold uppercase tracking-wider">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">
               {isEn ? 'Operating Costs' : 'Charges d’Exploitation'}
             </span>
-            <Receipt className="w-4 h-4 text-rose-600" />
+            <div className="w-9 h-9 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shadow-xs">
+              <Receipt className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-rose-600 dark:text-rose-400 font-display">
+          <div className="mt-3 text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-display tracking-tight">
             {formatMAD(totalExpenses)}
           </div>
-          <div className="text-[11px] text-[var(--text-secondary)] mt-1">
+          <div className="text-[11px] text-[var(--text-secondary)] mt-2">
             {expenses.length} {isEn ? 'recorded ledger items' : 'dépenses enregistrées'}
           </div>
         </Card>
 
         {/* Net Operating Result */}
-        <Card className="p-5">
+        <Card className="p-5 relative overflow-hidden group hover:border-orange-500/30 transition-all duration-200">
           <div className="flex justify-between items-center text-[var(--text-secondary)]">
-            <span className="text-xs font-bold uppercase tracking-wider">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">
               {isEn ? 'Net Operating Margin' : 'Résultat d’Exploitation Net'}
             </span>
-            <Coins className="w-4 h-4 text-brand-orange" />
+            <div className="w-9 h-9 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 flex items-center justify-center shadow-xs">
+              <Coins className="w-4 h-4" />
+            </div>
           </div>
           <div
-            className={`mt-2 text-2xl font-black font-display ${
+            className={`mt-3 text-2xl sm:text-3xl font-black font-display tracking-tight ${
               netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
             }`}
           >
             {formatMAD(netProfit)}
           </div>
-          <div className="text-[11px] text-[var(--text-secondary)] mt-1">
+          <div className="text-[11px] text-[var(--text-secondary)] mt-2">
             {isEn ? 'Inflows minus documented costs' : 'Recettes encaissées moins charges'}
           </div>
         </Card>

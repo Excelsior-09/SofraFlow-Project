@@ -84,7 +84,7 @@ export const AdminSystemHealthPage: React.FC = () => {
         <button
           onClick={loadHealth}
           disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] hover:text-brand-orange hover:bg-[var(--bg-card-hover)] transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-orange-500/20 active:scale-95"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>{isEn ? 'Ping Services' : 'Tester les Pings'}</span>
@@ -98,27 +98,29 @@ export const AdminSystemHealthPage: React.FC = () => {
           const isHealthy = comp.status === 'healthy';
 
           return (
-            <Card key={i} className="p-5 space-y-3">
+            <Card key={i} className="p-5 space-y-3.5 relative overflow-hidden group hover:border-slate-300 dark:hover:border-white/20 transition-all duration-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    isHealthy ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center border shadow-xs ${
+                    isHealthy
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                   }`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[var(--text-primary)] font-display">
                     {comp.name}
                   </h3>
                 </div>
 
-                <Badge variant={isHealthy ? 'success' : 'warning'} size="sm">
+                <Badge variant={isHealthy ? 'success' : 'warning'} size="sm" className="font-mono font-bold shadow-xs">
                   {isHealthy ? 'Operational' : 'Degraded'}
                 </Badge>
               </div>
 
               <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-center justify-between text-xs font-mono">
-                <span className="text-[var(--text-secondary)]">Response Latency:</span>
-                <span className="font-bold text-[var(--text-primary)]">{comp.latency}</span>
+                <span className="text-[var(--text-secondary)] text-[11px]">Response Latency:</span>
+                <span className="font-extrabold text-[var(--text-primary)]">{comp.latency}</span>
               </div>
 
               <div className="text-[11px] text-[var(--text-secondary)]">

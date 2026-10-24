@@ -62,16 +62,28 @@ export default {
           'warning-bg': '#FFFBEB',
           error: '#DC2626',
           'error-bg': '#FEF2F2'
+        },
+        aura: {
+          violet: '#8B5CF6',
+          indigo: '#6366F1',
+          amber: '#F59E0B',
+          cyan: '#06B6D4',
+          rose: '#F43F5E'
         }
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', '"Noto Sans Arabic"', 'system-ui', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+        display: ['"Outfit"', '"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'Menlo', 'Consolas', 'monospace']
       },
       boxShadow: {
         'soft': '0 2px 10px -2px rgba(15, 44, 89, 0.05), 0 1px 3px -1px rgba(15, 44, 89, 0.03)',
         'card': '0 4px 20px -4px rgba(15, 44, 89, 0.08), 0 2px 6px -2px rgba(15, 44, 89, 0.04)',
-        'elevated': '0 12px 36px -6px rgba(15, 44, 89, 0.15), 0 4px 12px -3px rgba(15, 44, 89, 0.08)'
+        'elevated': '0 12px 36px -6px rgba(15, 44, 89, 0.15), 0 4px 12px -3px rgba(15, 44, 89, 0.08)',
+        'aura': '0 0 35px -5px rgba(234, 88, 12, 0.18)',
+        'aura-violet': '0 0 35px -5px rgba(139, 92, 246, 0.22)',
+        'aura-emerald': '0 0 35px -5px rgba(16, 185, 129, 0.22)',
+        'inner-glow': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08)'
       }
     },
   },

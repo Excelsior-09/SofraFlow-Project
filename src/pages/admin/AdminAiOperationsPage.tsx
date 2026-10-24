@@ -175,7 +175,7 @@ export const AdminAiOperationsPage: React.FC = () => {
         <button
           onClick={loadData}
           disabled={isLoading}
-          className="p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-brand-orange transition-colors"
+          className="p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-[var(--text-secondary)] hover:text-amber-500 bg-[var(--bg-card)] transition-colors"
           title="Actualiser"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -193,9 +193,9 @@ export const AdminAiOperationsPage: React.FC = () => {
         >
           <div className="flex items-center gap-2">
             {configFeedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
             ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
             )}
             <span>{configFeedback.message}</span>
           </div>
@@ -209,15 +209,15 @@ export const AdminAiOperationsPage: React.FC = () => {
       )}
 
       {/* DEDICATED CLAUDE API CONFIGURATION & VAULT SECTION */}
-      <Card className="p-6 border-l-4 border-l-purple-600 bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-purple-950/10 shadow-sm space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
+      <div className="rounded-3xl p-6 border border-purple-500/30 bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-purple-950/20 shadow-lg shadow-purple-950/10 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-purple-500/15">
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-purple-600/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-inner">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-inner">
               <KeyRound className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-extrabold text-[var(--text-primary)] font-display">
+                <h2 className="text-base font-extrabold text-[var(--text-primary)] font-display tracking-tight">
                   {isEn ? 'Claude API Credential Vault & Governance' : 'Gouvernance & Configuration Sécurisée de la Clé Claude API'}
                 </h2>
                 <Badge
@@ -229,7 +229,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                     : isEn ? 'Key Missing' : 'Clé Manquante'}
                 </Badge>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
+              <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
                 {isEn
                   ? 'Server-side encrypted credential. Enables Zina AI menu scanning, translation, and automated dish generation.'
                   : 'Identifiant chiffré côté serveur. Alimente Zina AI pour le scan de cartes, la génération de plats et les suggestions.'}
@@ -242,7 +242,7 @@ export const AdminAiOperationsPage: React.FC = () => {
             <button
               onClick={handleTestConnection}
               disabled={isTestingHealth || !claudeConfig?.isConfigured}
-              className="px-3.5 py-2 rounded-xl border border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 rounded-xl border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/10 text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1.5 shadow-xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isTestingHealth ? 'animate-spin' : ''}`} />
               <span>{isTestingHealth ? (isEn ? 'Testing...' : 'Test en cours...') : (isEn ? 'Test Connection' : 'Tester la Connectivité')}</span>
@@ -250,7 +250,7 @@ export const AdminAiOperationsPage: React.FC = () => {
 
             <button
               onClick={() => setShowConfigModal(true)}
-              className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-500/20 active:scale-[0.98] flex items-center gap-1.5"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>{isEn ? 'Configure / Rotate Key' : 'Configurer / Remplacer la Clé'}</span>
@@ -261,11 +261,11 @@ export const AdminAiOperationsPage: React.FC = () => {
         {/* Configuration Details Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           {/* Masked Fingerprint */}
-          <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
               {isEn ? 'Active Key Fingerprint' : 'Empreinte de la Clé'}
             </span>
-            <div className="font-mono font-bold text-xs text-purple-700 dark:text-purple-300 truncate">
+            <div className="font-mono font-bold text-xs text-purple-600 dark:text-purple-300 truncate">
               {claudeConfig?.keyFingerprint || (isEn ? 'Not configured' : 'Non configurée')}
             </div>
             <span className="text-[10px] text-[var(--text-secondary)] block">
@@ -274,30 +274,30 @@ export const AdminAiOperationsPage: React.FC = () => {
           </div>
 
           {/* Model Selection */}
-          <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
               {isEn ? 'Active Model' : 'Modèle Claude Actif'}
             </span>
-            <div className="font-mono font-bold text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1.5 truncate">
+            <div className="font-mono font-bold text-xs text-purple-600 dark:text-purple-300 flex items-center gap-1.5 truncate">
               <Cpu className="w-3.5 h-3.5 shrink-0 text-purple-500" />
               <span className="truncate">{claudeConfig?.modelName || 'claude-sonnet-4-6'}</span>
             </div>
-            <span className="text-[10px] text-[var(--text-secondary)] block">
+            <span className="text-[10px] text-[var(--text-secondary)] block truncate">
               {AVAILABLE_CLAUDE_MODELS.find(m => m.id === (claudeConfig?.modelName || 'claude-sonnet-4-6'))?.name || 'Claude Sonnet 4.6'}
             </span>
           </div>
 
           {/* Budget Limit & Month Spend */}
-          <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
                 {isEn ? 'Monthly Budget' : 'Plafond Mensuel'}
               </span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                 ${claudeConfig?.monthSpendUsd?.toFixed(2) || '0.00'} / ${claudeConfig?.monthlyBudgetUsd || 100}
               </span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
+            <div className="w-full bg-slate-200 dark:bg-white/[0.08] h-1.5 rounded-full overflow-hidden mt-1">
               <div
                 className="bg-purple-600 h-full rounded-full transition-all"
                 style={{
@@ -314,7 +314,7 @@ export const AdminAiOperationsPage: React.FC = () => {
           </div>
 
           {/* Health Check Status */}
-          <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
               {isEn ? 'API Health & Latency' : 'Santé & Latence API'}
             </span>
@@ -340,11 +340,11 @@ export const AdminAiOperationsPage: React.FC = () => {
         </div>
 
         {/* AVAILABLE CLAUDE MODELS FLEET */}
-        <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+        <div className="pt-4 border-t border-purple-500/15 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <Sparkles className="w-3.5 h-3.5 text-purple-500" />
                 <span>{isEn ? 'Available Claude Model Fleet (8 Models Available)' : 'Flotte de Modèles Claude Disponibles (8 Modèles)'}</span>
               </h3>
               <p className="text-[11px] text-[var(--text-secondary)]">
@@ -354,9 +354,9 @@ export const AdminAiOperationsPage: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold border border-blue-500/20">Sonnet (Vision)</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20">Haiku (Speed)</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20">Opus (Frontier)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">Sonnet (Vision)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">Haiku (Speed)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">Opus (Frontier)</span>
             </div>
           </div>
 
@@ -373,10 +373,10 @@ export const AdminAiOperationsPage: React.FC = () => {
               return (
                 <div
                   key={model.id}
-                  className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
                     isActive
-                      ? 'bg-purple-500/10 border-purple-500 shadow-xs ring-1 ring-purple-500/30'
-                      : 'bg-[var(--bg-page)] border-[var(--border-subtle)] hover:border-purple-300 dark:hover:border-purple-800'
+                      ? 'bg-purple-500/10 border-purple-500 shadow-md shadow-purple-500/10 ring-1 ring-purple-500/30'
+                      : 'bg-[var(--bg-card)] border-slate-200/80 dark:border-white/[0.08] hover:border-purple-400/50'
                   }`}
                 >
                   <div className="space-y-1.5">
@@ -390,14 +390,14 @@ export const AdminAiOperationsPage: React.FC = () => {
                           {isEn ? 'Active' : 'Actif'}
                         </span>
                       ) : model.badge ? (
-                        <span className="text-[9px] font-semibold text-[var(--text-secondary)] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+                        <span className="text-[9px] font-semibold text-[var(--text-secondary)] bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06]">
                           {model.badge}
                         </span>
                       ) : null}
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-bold text-[var(--text-primary)] leading-tight">{model.name}</h4>
+                      <h4 className="text-xs font-bold text-[var(--text-primary)] leading-tight font-display">{model.name}</h4>
                       <code className="text-[10px] text-[var(--text-secondary)] font-mono block mt-0.5 truncate" title={model.id}>
                         {model.id}
                       </code>
@@ -408,7 +408,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="pt-2 mt-2 border-t border-[var(--border-subtle)]/60">
+                  <div className="pt-2 mt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
                     {isActive ? (
                       <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-1 py-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -419,7 +419,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                         type="button"
                         disabled={isSavingKey}
                         onClick={() => handleQuickSwitchModel(model.id)}
-                        className="w-full py-1 px-2 rounded-lg bg-[var(--bg-card)] hover:bg-purple-600 hover:text-white border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1.5 px-2 rounded-lg bg-[var(--bg-page)] hover:bg-purple-600 hover:text-white border border-slate-200 dark:border-white/[0.08] text-[11px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1 active:scale-[0.98]"
                       >
                         <Zap className="w-3 h-3 text-purple-500" />
                         <span>{isEn ? 'Activate' : 'Activer'}</span>
@@ -431,19 +431,19 @@ export const AdminAiOperationsPage: React.FC = () => {
             })}
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* MODAL: CONFIGURE / ROTATE CLAUDE API KEY */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[var(--text-primary)] font-display">
+                  <h3 className="text-base font-extrabold text-[var(--text-primary)] font-display tracking-tight">
                     {isEn ? 'Configure Claude API Key & Models' : 'Configuration de la Clé & Modèles Claude'}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)]">
@@ -475,7 +475,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                       ? (isEn ? '•••••••••••••••• (Leave blank to keep current key)' : '•••••••••••••••• (Laisser vide pour conserver la clé actuelle)')
                       : 'sk-ant-api03-...'
                   }
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
                   autoComplete="off"
                 />
                 <span className="text-[10px] text-[var(--text-secondary)] block">
@@ -497,7 +497,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                   <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 font-medium transition-all"
                   >
                     <optgroup label={isEn ? "Sonnet (Menu Vision & OCR)" : "Famille Sonnet (Vision Menu & OCR)"}>
                       <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recommandé • Vision)</option>
@@ -531,32 +531,32 @@ export const AdminAiOperationsPage: React.FC = () => {
                     step="10"
                     value={monthlyBudgetUsd}
                     onChange={(e) => setMonthlyBudgetUsd(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs flex items-start gap-2">
+              <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
-                <span className="leading-snug">
+                <span className="leading-relaxed">
                   {isEn
                     ? 'This action will be logged in the immutable audit trail without storing the key value.'
                     : 'Cette opération sera consignée dans le journal d’audit immuable sans enregistrer la valeur de la clé.'}
                 </span>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-page)]"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   {isEn ? 'Cancel' : 'Annuler'}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingKey || (!newApiKey.trim() && !claudeConfig?.isConfigured)}
-                  className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isSavingKey ? (
                     <>
@@ -579,84 +579,84 @@ export const AdminAiOperationsPage: React.FC = () => {
       {/* Consumption Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Operations */}
-        <Card className="p-4">
+        <div className="rounded-2xl p-4 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
             {isEn ? 'AI Requests Executed' : 'Requêtes IA Exécutées'}
           </div>
-          <div className="text-2xl font-black text-[var(--text-primary)] font-display mt-1">
+          <div className="text-3xl font-black text-[var(--text-primary)] font-display tracking-tight mt-1.5">
             {events.length}
           </div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-bold">
-            <CheckCircle2 className="w-3 h-3" />
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1 font-bold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
             {successfulCount} {isEn ? 'successful' : 'réussies'}
           </div>
-        </Card>
+        </div>
 
         {/* Token Consumption */}
-        <Card className="p-4">
+        <div className="rounded-2xl p-4 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
             {isEn ? 'Tokens Consumed' : 'Volume de Jetons'}
           </div>
-          <div className="text-2xl font-black text-[var(--text-primary)] font-display mt-1">
+          <div className="text-3xl font-black text-[var(--text-primary)] font-display tracking-tight mt-1.5 font-mono">
             {(totalInputTokens + totalOutputTokens).toLocaleString()}
           </div>
-          <div className="text-[10px] text-[var(--text-secondary)] mt-1 font-mono">
+          <div className="text-[10px] text-[var(--text-secondary)] mt-1.5 font-mono">
             In: {totalInputTokens.toLocaleString()} | Out: {totalOutputTokens.toLocaleString()}
           </div>
-        </Card>
+        </div>
 
         {/* Estimated Cost USD */}
-        <Card className="p-4">
+        <div className="rounded-2xl p-4 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
             {isEn ? 'Estimated Cost (USD)' : 'Coût Estimé (USD)'}
           </div>
-          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-display mt-1">
+          <div className="text-3xl font-black text-amber-600 dark:text-amber-400 font-display tracking-tight mt-1.5 font-mono">
             ${totalCostUsd.toFixed(4)}
           </div>
-          <div className="text-[10px] text-[var(--text-secondary)] mt-1">
+          <div className="text-[10px] text-[var(--text-secondary)] mt-1.5 font-medium">
             {isEn ? 'Calculated from token pricing' : 'Calculé sur grille tarifaire Anthropic'}
           </div>
-        </Card>
+        </div>
 
         {/* Estimated Cost MAD */}
-        <Card className="p-4">
+        <div className="rounded-2xl p-4 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
             {isEn ? 'Estimated Cost (MAD)' : 'Coût Estimé (MAD)'}
           </div>
-          <div className="text-2xl font-black text-brand-orange font-display mt-1">
-            {totalCostMad.toFixed(2)} MAD
+          <div className="text-3xl font-black text-amber-500 font-display tracking-tight mt-1.5 font-mono">
+            {totalCostMad.toFixed(2)} <span className="text-xs text-[var(--text-secondary)]">MAD</span>
           </div>
-          <div className="text-[10px] text-[var(--text-secondary)] mt-1">
+          <div className="text-[10px] text-[var(--text-secondary)] mt-1.5 font-medium">
             Taux de change USD/MAD : ~10.05
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Model Tariffs & Limits Info Box */}
-      <Card className="p-5">
-        <h3 className="text-sm font-bold text-[var(--text-primary)] font-display mb-3">
+      <div className="rounded-2xl p-5 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+        <h3 className="text-sm font-bold text-[var(--text-primary)] font-display tracking-tight mb-3">
           {isEn ? 'Claude Model Rates & Active Limits' : 'Grille Tarifaire Claude & Quotas Actifs'}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
-            <div className="font-bold text-[var(--text-primary)]">Claude 3.7 Sonnet (Menu Vision & Analysis)</div>
-            <div className="text-[11px] text-[var(--text-secondary)]">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
+            <div className="font-bold text-[var(--text-primary)] font-display">Claude 3.7 Sonnet (Menu Vision & Analysis)</div>
+            <div className="text-[11px] text-[var(--text-secondary)] font-mono">
               Input : $3.00 / million tokens (~30.15 MAD)
             </div>
-            <div className="text-[11px] text-[var(--text-secondary)]">
+            <div className="text-[11px] text-[var(--text-secondary)] font-mono">
               Output : $15.00 / million tokens (~150.75 MAD)
             </div>
-            <div className="text-[10px] text-brand-orange font-bold pt-1">
+            <div className="text-[10px] text-amber-500 font-bold pt-1">
               {isEn ? 'Estimated cost per menu generated: ~0.45 MAD' : 'Coût estimé par carte générée : ~0,45 MAD'}
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
-            <div className="font-bold text-[var(--text-primary)]">Claude 3.5 Haiku (Translations & Quick Tags)</div>
-            <div className="text-[11px] text-[var(--text-secondary)]">
+          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] space-y-1">
+            <div className="font-bold text-[var(--text-primary)] font-display">Claude 3.5 Haiku (Translations & Quick Tags)</div>
+            <div className="text-[11px] text-[var(--text-secondary)] font-mono">
               Input : $0.80 / million tokens (~8.04 MAD)
             </div>
-            <div className="text-[11px] text-[var(--text-secondary)]">
+            <div className="text-[11px] text-[var(--text-secondary)] font-mono">
               Output : $4.00 / million tokens (~40.20 MAD)
             </div>
             <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold pt-1">
@@ -664,12 +664,12 @@ export const AdminAiOperationsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Events Log Table */}
-      <Card className="overflow-hidden">
-        <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
+      <div className="rounded-2xl overflow-hidden bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+        <div className="p-4 border-b border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display tracking-tight">
             {isEn ? 'Recent AI Operation Logs' : 'Journal des Événements IA Récentes'}
           </h3>
           <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
@@ -679,7 +679,7 @@ export const AdminAiOperationsPage: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[var(--bg-card-hover)] text-[var(--text-secondary)] uppercase text-[10px] tracking-wider border-b border-[var(--border-subtle)]">
+            <thead className="bg-slate-50 dark:bg-white/[0.02] text-[var(--text-secondary)] uppercase text-[10px] tracking-wider font-semibold border-b border-slate-200/80 dark:border-white/[0.06]">
               <tr>
                 <th className="py-3 px-4">{isEn ? 'Timestamp' : 'Horodatage'}</th>
                 <th className="py-3 px-4">{isEn ? 'Feature / Op' : 'Fonction'}</th>
@@ -690,24 +690,24 @@ export const AdminAiOperationsPage: React.FC = () => {
                 <th className="py-3 px-4">{isEn ? 'Status' : 'Statut'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
+            <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-[var(--text-secondary)]">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-orange" />
-                    <span>{isEn ? 'Loading AI events...' : 'Chargement des événements IA...'}</span>
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
+                    <span className="font-medium">{isEn ? 'Loading AI events...' : 'Chargement des événements IA...'}</span>
                   </td>
                 </tr>
               ) : events.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-[var(--text-secondary)]">
-                    <Cpu className="w-8 h-8 mx-auto mb-2 opacity-40 text-purple-600" />
-                    <span>{isEn ? 'No AI events recorded yet in the log.' : 'Aucun événement IA enregistré dans le journal.'}</span>
+                    <Cpu className="w-8 h-8 mx-auto mb-2 opacity-30 text-purple-600" />
+                    <span className="font-medium">{isEn ? 'No AI events recorded yet in the log.' : 'Aucun événement IA enregistré dans le journal.'}</span>
                   </td>
                 </tr>
               ) : (
                 events.map(ev => (
-                  <tr key={ev.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
+                  <tr key={ev.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-4 font-mono text-[11px] text-[var(--text-secondary)]">
                       {new Date(ev.createdAt).toLocaleTimeString(isEn ? 'en-US' : 'fr-FR', {
                         hour: '2-digit',
@@ -728,7 +728,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                       {ev.totalTokens.toLocaleString()}
                     </td>
 
-                    <td className="py-3 px-4 font-mono text-[11px] font-bold text-brand-orange">
+                    <td className="py-3 px-4 font-mono text-[11px] font-bold text-amber-500">
                       {ev.estimatedCostMad.toFixed(3)} MAD
                     </td>
 
@@ -747,7 +747,7 @@ export const AdminAiOperationsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </AdminLayout>
   );
 };

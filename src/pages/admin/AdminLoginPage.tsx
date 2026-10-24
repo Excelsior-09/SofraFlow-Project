@@ -183,9 +183,12 @@ export const AdminLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans selection:bg-purple-600 selection:text-white">
-      {/* Background cyber glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-purple-900/20 via-indigo-900/10 to-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans selection:bg-orange-600 selection:text-white">
+      {/* Background ambient orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-gradient-to-tr from-orange-600/15 via-amber-500/10 to-purple-600/15 rounded-full blur-[140px]" />
+        <div className="absolute -bottom-40 right-1/4 w-[500px] h-[350px] bg-gradient-to-tl from-amber-500/10 via-orange-600/10 to-transparent rounded-full blur-[130px]" />
+      </div>
 
       {/* Top Breadcrumb / Return */}
       <div className="w-full max-w-md mb-6 flex items-center justify-between z-10">
@@ -196,17 +199,19 @@ export const AdminLoginPage: React.FC = () => {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Retour au site public</span>
         </Link>
-        <span className="text-[10px] font-mono tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/50 text-purple-300">
+        <span className="text-[10px] font-mono tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold">
           Portail Restreint
         </span>
       </div>
 
       {/* Main Card */}
-      <div className="w-full max-w-md bg-[#0F131D] border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl z-10 space-y-6 backdrop-blur-xl">
+      <div className="w-full max-w-md bg-[#0D1424]/90 border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl z-10 space-y-6 backdrop-blur-2xl">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 flex items-center justify-center mx-auto shadow-lg shadow-purple-900/40 text-white">
-            <ShieldCheck className="w-8 h-8" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-500 to-yellow-400 p-[1.5px] mx-auto shadow-lg shadow-orange-500/20">
+            <div className="w-full h-full rounded-2xl bg-[#0D1424] flex items-center justify-center text-amber-400">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white font-display tracking-tight">
             SOFRAFLOW Super Admin
@@ -220,7 +225,7 @@ export const AdminLoginPage: React.FC = () => {
         {errorMessage && (
           <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs font-medium flex items-start gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <span className="leading-snug">{errorMessage}</span>
+            <span className="leading-relaxed">{errorMessage}</span>
           </div>
         )}
 
@@ -237,7 +242,7 @@ export const AdminLoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@sofraflow.com"
-                className="w-full px-4 py-3 rounded-xl bg-[#090C14] border border-slate-700/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/60 transition-all font-mono placeholder:text-slate-600"
+                className="w-full px-4 py-3 rounded-xl bg-[#070B14] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all font-mono placeholder:text-slate-600"
                 autoComplete="username"
               />
             </div>
@@ -249,7 +254,7 @@ export const AdminLoginPage: React.FC = () => {
                 </label>
                 <Link
                   to="/forgot-password"
-                  className="text-[11px] text-purple-400 hover:text-purple-300 transition-colors"
+                  className="text-[11px] text-amber-400 hover:text-amber-300 transition-colors"
                 >
                   Mot de passe oublié ?
                 </Link>
@@ -261,7 +266,7 @@ export const AdminLoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••••••"
-                  className="w-full px-4 py-3 pr-11 rounded-xl bg-[#090C14] border border-slate-700/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/60 transition-all font-mono placeholder:text-slate-600"
+                  className="w-full px-4 py-3 pr-11 rounded-xl bg-[#070B14] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all font-mono placeholder:text-slate-600"
                   autoComplete="current-password"
                 />
                 <button
@@ -278,7 +283,7 @@ export const AdminLoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading || !email || !password}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 hover:from-purple-600 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-900/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -298,8 +303,8 @@ export const AdminLoginPage: React.FC = () => {
         {/* STEP 2: MFA CHALLENGE */}
         {step === 'mfa_challenge' && (
           <form onSubmit={handleMfaSubmit} className="space-y-4">
-            <div className="p-3.5 rounded-2xl bg-purple-950/30 border border-purple-800/40 text-purple-300 text-xs flex items-center gap-2.5">
-              <KeyRound className="w-4 h-4 text-purple-400 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-2.5 leading-relaxed">
+              <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Veuillez saisir le code de vérification à 6 chiffres généré par votre application d'authentification (Google Authenticator / 1Password).</span>
             </div>
 
@@ -317,14 +322,14 @@ export const AdminLoginPage: React.FC = () => {
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
-                className="w-full px-4 py-3 rounded-xl bg-[#090C14] border border-purple-600/50 text-white text-center font-mono font-bold text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500/80"
+                className="w-full px-4 py-3 rounded-xl bg-[#070B14] border border-amber-500/40 text-white text-center font-mono font-bold text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500/60 transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || mfaCode.trim().length !== 6}
-              className="w-full py-3.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -356,7 +361,7 @@ export const AdminLoginPage: React.FC = () => {
         {/* STEP 2 (ALT): MFA MANDATORY ENROLLMENT */}
         {step === 'mfa_enroll' && (
           <form onSubmit={handleMfaSubmit} className="space-y-4">
-            <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-2.5">
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-2.5 leading-relaxed">
               <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Pour protéger l'administration de SOFRAFLOW, la configuration du 2FA est obligatoire pour le Super Admin.</span>
             </div>
@@ -372,7 +377,7 @@ export const AdminLoginPage: React.FC = () => {
             {enrollSecret && (
               <div className="space-y-1 text-center">
                 <span className="text-[11px] text-slate-400 block">Clé secrète de secours :</span>
-                <div className="flex items-center justify-center gap-2 font-mono text-xs bg-[#090C14] px-3 py-1.5 rounded-lg border border-slate-800 text-purple-300">
+                <div className="flex items-center justify-center gap-2 font-mono text-xs bg-[#070B14] px-3 py-1.5 rounded-lg border border-white/[0.08] text-amber-300">
                   <span className="truncate max-w-[200px]">{enrollSecret}</span>
                   <button
                     type="button"
@@ -386,7 +391,7 @@ export const AdminLoginPage: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-1.5 pt-2 border-t border-slate-800">
+            <div className="space-y-1.5 pt-2 border-t border-white/[0.08]">
               <label className="text-xs font-bold text-slate-300 block text-center">
                 Code de vérification (6 chiffres)
               </label>
@@ -400,14 +405,14 @@ export const AdminLoginPage: React.FC = () => {
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
-                className="w-full px-4 py-3 rounded-xl bg-[#090C14] border border-purple-600/50 text-white text-center font-mono font-bold text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500/80"
+                className="w-full px-4 py-3 rounded-xl bg-[#070B14] border border-amber-500/40 text-white text-center font-mono font-bold text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500/60 transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || mfaCode.trim().length !== 6}
-              className="w-full py-3.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -425,7 +430,7 @@ export const AdminLoginPage: React.FC = () => {
         )}
 
         {/* Footer Security Disclaimer */}
-        <div className="pt-4 border-t border-slate-800/70 text-center">
+        <div className="pt-4 border-t border-white/[0.08] text-center">
           <p className="text-[11px] text-slate-500 leading-normal">
             SOFRAFLOW Security Shield • Chiffrement de bout en bout • Toutes les tentatives d'accès non autorisées sont enregistrées dans le journal d'audit immuable.
           </p>

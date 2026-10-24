@@ -127,33 +127,42 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex font-sans transition-colors duration-200 relative overflow-x-hidden">
+      {/* ATMOSPHERIC AMBIENT AURA GLOWS */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+        <div className="absolute -top-40 -left-40 w-[550px] h-[550px] bg-gradient-to-br from-orange-500/8 via-amber-500/4 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-gradient-to-bl from-purple-500/8 via-indigo-500/4 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-10 left-1/3 w-[650px] h-[650px] bg-gradient-to-tr from-emerald-500/6 via-cyan-500/4 to-transparent rounded-full blur-3xl" />
+      </div>
+
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex w-64 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-card)] shrink-0 z-20">
+      <aside className="hidden lg:flex w-64 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-card)]/80 dark:bg-[#0A101D]/80 backdrop-blur-xl shrink-0 z-20 shadow-[1px_0_30px_0_rgba(0,0,0,0.03)]">
         {/* Brand header */}
         <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between">
-          <Link to="/admin/overview" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-orange to-amber-500 flex items-center justify-center text-white font-black text-sm shadow-md shadow-brand-orange/20">
-              SF
+          <Link to="/admin/overview" className="flex items-center gap-3 group">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-500 to-yellow-400 p-[1px] shadow-lg shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200">
+              <div className="w-full h-full rounded-[15px] bg-[#0A101D] flex items-center justify-center text-white font-black text-xs font-display tracking-wider">
+                SF
+              </div>
             </div>
             <div>
-              <span className="font-extrabold text-sm text-[var(--text-primary)] tracking-tight font-display block">
+              <span className="font-black text-sm text-[var(--text-primary)] tracking-tight font-display block">
                 SOFRAFLOW
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange block">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500 block">
                 Super Admin
               </span>
             </div>
           </Link>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-xs">
             <Lock className="w-2.5 h-2.5" />
-            MFA
+            AAL2
           </span>
         </div>
 
         {/* Navigation list */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
+          <div className="px-3 pt-2 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] opacity-70">
             {isEn ? 'Platform Governance' : 'Gouvernance Plateforme'}
           </div>
 
@@ -165,20 +174,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group relative ${
                   isActive
-                    ? 'bg-brand-orange text-white shadow-sm shadow-brand-orange/30'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]'
+                    ? 'bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-transparent text-orange-600 dark:text-orange-400 border-l-2 border-orange-500 font-bold shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]/70 hover:text-[var(--text-primary)] hover:translate-x-0.5'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon
+                    className={`w-4 h-4 shrink-0 transition-colors ${
+                      isActive
+                        ? 'text-orange-600 dark:text-orange-400'
+                        : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
+                    }`}
+                  />
                   <span className="truncate">{item.label}</span>
                 </div>
                 {item.badge !== undefined && (
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white text-brand-orange' : 'bg-brand-orange text-white'
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-xs ${
+                      isActive
+                        ? 'bg-orange-600 text-white shadow-orange-500/30'
+                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
                     }`}
                   >
                     {item.badge}
@@ -190,12 +207,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-[var(--border-subtle)] space-y-2 bg-[var(--bg-card)]">
+        <div className="p-3 border-t border-[var(--border-subtle)] space-y-1.5 bg-[var(--bg-card)]/90 backdrop-blur-md">
           <Link
             to="/app/overview"
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-brand-orange transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-orange-600 dark:hover:text-orange-400 transition-all border border-transparent hover:border-[var(--border-subtle)]"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Store className="w-4 h-4" />
               <span>{isEn ? 'Restaurant Workspace' : 'Espace Restaurant'}</span>
             </div>
@@ -204,7 +221,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           <button
             onClick={() => logout()}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>{isEn ? 'Sign Out' : 'Déconnexion'}</span>
@@ -213,13 +230,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </aside>
 
       {/* MAIN CONTAINER */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden relative z-10">
         {/* TOP BAR */}
-        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-card)]/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]"
+              className="lg:hidden p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] transition-colors"
               aria-label="Open navigation"
             >
               <MenuIcon className="w-5 h-5" />
@@ -227,11 +244,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">
                   SOFRAFLOW CONTROL
                 </span>
-                <span className="text-[10px] text-[var(--text-secondary)]">•</span>
-                <span className="text-[10px] font-mono font-semibold text-[var(--text-secondary)]">
+                <span className="text-[10px] text-[var(--text-secondary)] opacity-60">•</span>
+                <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">
                   v1.0.0
                 </span>
               </div>
@@ -264,19 +285,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
           <div className="relative w-72 max-w-xs bg-[var(--bg-card)] border-r border-[var(--border-subtle)] flex flex-col z-10 shadow-2xl">
             <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-brand-orange flex items-center justify-center text-white font-black text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white font-black text-xs font-display">
                   SF
                 </div>
                 <div>
-                  <span className="font-bold text-xs block text-[var(--text-primary)]">SOFRAFLOW</span>
-                  <span className="text-[10px] font-bold text-brand-orange uppercase block">Super Admin</span>
+                  <span className="font-bold text-xs block text-[var(--text-primary)] font-display">SOFRAFLOW</span>
+                  <span className="text-[10px] font-extrabold text-orange-500 uppercase tracking-wider block">Super Admin</span>
                 </div>
               </div>
               <button
@@ -298,7 +319,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${
                       isActive
-                        ? 'bg-brand-orange text-white'
+                        ? 'bg-orange-600 text-white font-bold shadow-xs'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]'
                     }`}
                   >
@@ -307,7 +328,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge !== undefined && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white text-brand-orange">
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white text-orange-600">
                         {item.badge}
                       </span>
                     )}
@@ -320,14 +341,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <Link
                 to="/app/overview"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-brand-orange"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-orange-500 font-medium"
               >
                 <Store className="w-4 h-4" />
                 <span>{isEn ? 'Restaurant Workspace' : 'Espace Restaurant'}</span>
               </Link>
               <button
                 onClick={() => logout()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-rose-600"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-rose-600 font-medium"
               >
                 <LogOut className="w-4 h-4" />
                 <span>{isEn ? 'Sign Out' : 'Déconnexion'}</span>

@@ -133,12 +133,14 @@ export const AdminAuditLogsPage: React.FC = () => {
                       })}
                     </td>
 
-                    <td className="py-3 px-4 font-bold text-[var(--text-primary)] font-mono">
-                      {entry.eventType}
+                    <td className="py-3 px-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 font-mono text-[11px] font-bold shadow-xs">
+                        {entry.eventType}
+                      </span>
                     </td>
 
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded bg-[var(--bg-page)] border border-[var(--border-subtle)] font-mono text-[10px] text-[var(--text-secondary)]">
+                      <span className="px-2 py-0.5 rounded-lg bg-[var(--bg-page)] border border-[var(--border-subtle)] font-mono text-[10px] text-[var(--text-secondary)] font-semibold">
                         {entry.entityType} ({entry.entityId ? entry.entityId.slice(0, 8) + '...' : '—'})
                       </span>
                     </td>
@@ -150,7 +152,7 @@ export const AdminAuditLogsPage: React.FC = () => {
                     <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => setSelectedLog(entry)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-secondary)] hover:text-brand-orange hover:border-brand-orange transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-secondary)] hover:text-white hover:bg-orange-600 hover:border-orange-600 transition-all shadow-xs active:scale-95"
                       >
                         <Eye className="w-3 h-3" />
                         <span>{isEn ? 'View Payload' : 'Voir Payload'}</span>

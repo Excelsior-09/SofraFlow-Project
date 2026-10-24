@@ -78,90 +78,94 @@ export const AdminAnalyticsPage: React.FC = () => {
         <button
           onClick={loadData}
           disabled={isLoading}
-          className="p-2 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-brand-orange transition-colors"
+          className="p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-[var(--text-secondary)] hover:text-amber-500 bg-[var(--bg-card)] transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       }
     >
       {/* Funnel Overview */}
-      <Card className="p-5">
-        <h3 className="text-sm font-bold text-[var(--text-primary)] font-display mb-4">
+      <div className="rounded-2xl p-5 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+        <h3 className="text-sm font-bold text-[var(--text-primary)] font-display tracking-tight mb-4">
           {isEn ? 'SaaS Merchant Onboarding & Activation Funnel' : 'Entonnoir d’Activation des Commerçants (Données Réelles)'}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           {funnelData.map((f, i) => (
-            <div key={i} className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] relative">
-              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">
+            <div key={i} className="group p-4 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] hover:border-amber-500/30 transition-all">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
                 {f.step}
               </span>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-xl font-black text-[var(--text-primary)] font-display">
+              <div className="mt-1.5 flex items-baseline justify-between">
+                <span className="text-2xl font-black text-[var(--text-primary)] font-display tracking-tight">
                   {f.count}
                 </span>
-                <span className="text-xs font-bold text-brand-orange font-mono">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
                   {f.rate}
                 </span>
               </div>
-              <div className="w-full bg-[var(--border-subtle)] h-1 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-white/[0.08] h-1.5 rounded-full mt-2.5 overflow-hidden">
                 <div
-                  className="bg-brand-orange h-full rounded-full"
+                  className="bg-gradient-to-r from-orange-500 to-amber-500 h-full rounded-full transition-all duration-500"
                   style={{ width: f.rate }}
                 />
               </div>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
 
       {/* Feature Adoption Breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <Card className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
+        <div className="rounded-2xl p-5 space-y-3 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display tracking-tight">
             {isEn ? 'Establishment Activation Rate' : 'Taux d’Activation des Établissements'}
           </h3>
-          <p className="text-xs text-[var(--text-secondary)]">
+          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
             {isEn
               ? 'Percentage of created restaurants that have completed menu setup and published their QR code.'
               : 'Pourcentage de restaurants ayant finalisé leur carte digitale et publié leur QR code.'}
           </p>
 
-          <div className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between">
             <div>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-display">
+              <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 font-display tracking-tight">
                 {Math.round((publishedMenus / Math.max(1, totalRestaurants)) * 100)}%
               </div>
-              <span className="text-[11px] text-[var(--text-secondary)]">
+              <span className="text-[11px] text-[var(--text-secondary)] font-medium">
                 {publishedMenus} / {totalRestaurants} {isEn ? 'establishments live' : 'établissements en ligne'}
               </span>
             </div>
-            <UtensilsCrossed className="w-8 h-8 text-emerald-600 opacity-60" />
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <UtensilsCrossed className="w-6 h-6 text-emerald-500" />
+            </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
+        <div className="rounded-2xl p-5 space-y-3 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] font-display tracking-tight">
             {isEn ? 'AI Menu Generation Adoption' : 'Adoption du Générateur IA Zina'}
           </h3>
-          <p className="text-xs text-[var(--text-secondary)]">
+          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
             {isEn
               ? 'Utilization of Zina AI menu creation and smart OCR extraction features.'
               : 'Utilisation de l’assistant IA Zina pour la numérisation des cartes physiques.'}
           </p>
 
-          <div className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between">
             <div>
-              <div className="text-2xl font-black text-brand-orange font-display">
+              <div className="text-3xl font-black text-amber-600 dark:text-amber-400 font-display tracking-tight">
                 {analytics?.totalAiRequests || 0}
               </div>
-              <span className="text-[11px] text-[var(--text-secondary)]">
+              <span className="text-[11px] text-[var(--text-secondary)] font-medium">
                 {isEn ? 'AI operations recorded to date' : 'opérations IA exécutées à date'}
               </span>
             </div>
-            <Sparkles className="w-8 h-8 text-brand-orange opacity-60" />
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-amber-500" />
+            </div>
           </div>
-        </Card>
+        </div>
       </div>
     </AdminLayout>
   );

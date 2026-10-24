@@ -18,13 +18,13 @@ export const Badge: React.FC<BadgeProps> = ({
   icon
 }) => {
   const variantStyles = {
-    forest: 'bg-forest/10 dark:bg-forest/30 text-forest dark:text-[#4ADE80] border-forest/20 dark:border-forest/40',
-    ivory: 'bg-ivory-dark dark:bg-[#1B2F29] text-ink-main dark:text-[#F0F4F2] border-border-subtle dark:border-[#233831]',
-    gold: 'bg-gold-light dark:bg-gold/15 text-gold-hover dark:text-gold border-gold/30 dark:border-gold/40',
-    success: 'bg-status-success-bg dark:bg-[#102B20] text-status-success dark:text-[#4ADE80] border-status-success/20 dark:border-status-success/30',
-    warning: 'bg-status-warning-bg dark:bg-[#2B2310] text-status-warning dark:text-[#FBBF24] border-status-warning/30',
-    error: 'bg-status-error-bg dark:bg-[#2E1414] text-status-error dark:text-[#F87171] border-status-error/20 dark:border-status-error/30',
-    neutral: 'bg-gray-100 dark:bg-[#1C2C26] text-gray-700 dark:text-[#A3B3AB] border-gray-200 dark:border-[#2C4239]'
+    forest: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25',
+    ivory: 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08]',
+    gold: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/25',
+    success: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25',
+    warning: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/25',
+    error: 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/25',
+    neutral: 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08]'
   };
 
   const sizeStyles = {

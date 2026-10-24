@@ -85,7 +85,7 @@ export const AdminSecurityPage: React.FC = () => {
         <button
           onClick={handleRunAudit}
           disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] hover:text-brand-orange hover:bg-[var(--bg-card-hover)] transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-orange-500/20 active:scale-95"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>{isEn ? 'Re-run Checks' : 'Relancer l’Audit'}</span>
@@ -93,22 +93,22 @@ export const AdminSecurityPage: React.FC = () => {
       }
     >
       {/* Super Admin Identity Badge Card */}
-      <Card className="p-5 border-l-4 border-l-emerald-500">
+      <Card className="p-6 border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-500/8 via-transparent to-indigo-500/5 relative overflow-hidden shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center shadow-xs">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-[var(--text-primary)] font-display">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-extrabold text-[var(--text-primary)] font-display tracking-tight">
                   {user?.fullName || 'Super Administrator'} ({user?.email})
                 </h3>
-                <Badge variant={isAal2Active ? 'success' : 'warning'} size="sm">
+                <Badge variant={isAal2Active ? 'success' : 'warning'} size="sm" className="font-mono font-bold shadow-xs">
                   {isAal2Active ? 'MFA AAL2 Active' : 'MFA AAL1'}
                 </Badge>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
                 {isEn
                   ? 'Server-verified Super Admin privilege. Full platform governance rights.'
                   : 'Droits Super Admin vérifiés côté serveur. Accès intégral à la gouvernance.'}
@@ -116,8 +116,8 @@ export const AdminSecurityPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-[11px] font-mono text-[var(--text-secondary)] text-right">
-            <div>Audit executed: {lastCheckTime}</div>
+          <div className="text-[11px] font-mono text-[var(--text-secondary)] text-left sm:text-right bg-[var(--bg-page)]/80 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)]">
+            <div>Audit executed: <span className="font-bold text-[var(--text-primary)]">{lastCheckTime}</span></div>
             <div className="text-emerald-600 font-bold mt-0.5">Zero critical vulnerabilities</div>
           </div>
         </div>
