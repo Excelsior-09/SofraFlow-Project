@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import {
   PlatformExecutiveAnalytics,
   OperatingExpenseRecord,
-  SubscriptionPaymentRequest
+  SubscriptionPaymentRequest,
+  AVAILABLE_CLAUDE_MODELS
 } from '../types';
 
 describe('Super Admin Dashboard — Authorization, Access & Security Tests', () => {
@@ -440,5 +441,58 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
       expect(health.latencyMs).toBe(138);
       expect((health as any).key).toBeUndefined();
     });
+
+    it('includes all 8 user-specified Claude models in available fleet', () => {
+      const modelIds = AVAILABLE_CLAUDE_MODELS.map(m => m.id);
+      const expectedModels = [
+        'claude-haiku-4-5-20251001',
+        'claude-opus-4-6',
+        'claude-opus-4-7',
+        'claude-opus-4-8',
+        'claude-opus-5',
+        'claude-opus-5-5',
+        'claude-sonnet-4-6',
+        'claude-sonnet-5'
+      ];
+
+      for (const expected of expectedModels) {
+        expect(modelIds).toContain(expected);
+      }
+    });
+
+    it('allows switching active Claude model without re-entering the secret key', async () => {
+      const rpcSpy = vi.spyOn(supabase, 'rpc').mockImplementation((async (fn: string, params: any) => {
+        if (fn === 'save_claude_api_key') {
+          return {
+            data: { success: true, message: `Modèle configuré : ${params.p_model}` },
+            error: null
+          } as any;
+        }
+        if (fn === 'get_claude_api_config') {
+          return {
+            data: {
+              is_configured: true,
+              key_fingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
+              model_name: 'claude-sonnet-5',
+              monthly_budget_usd: 150.0
+            },
+            error: null
+          } as any;
+        }
+        return { data: null, error: null } as any;
+      }) as any);
+
+      // Call saveClaudeApiKey with empty key to switch model
+      const res = await adminService.saveClaudeApiKey('', 'claude-sonnet-5', 150);
+      expect(res.success).toBe(true);
+      expect(rpcSpy).toHaveBeenCalledWith('save_claude_api_key', {
+        p_api_key: '',
+        p_model: 'claude-sonnet-5',
+        p_budget_usd: 150,
+        p_max_tokens: 4096
+      });
+      expect(res.config?.modelName).toBe('claude-sonnet-5');
+    });
   });
 });
+

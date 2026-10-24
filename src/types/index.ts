@@ -434,4 +434,112 @@ export interface ClaudeApiConfigRecord {
   monthSpendMad: number;
 }
 
+export interface ClaudeModelOption {
+  id: string;
+  name: string;
+  family: 'sonnet' | 'opus' | 'haiku' | 'legacy';
+  tier: string;
+  descriptionEn: string;
+  descriptionFr: string;
+  badge?: string;
+}
+
+export const AVAILABLE_CLAUDE_MODELS: ClaudeModelOption[] = [
+  // Sonnet Models
+  {
+    id: 'claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
+    family: 'sonnet',
+    tier: 'Sonnet',
+    descriptionEn: 'Recommended • High-precision Menu Vision, OCR & Fast Generation',
+    descriptionFr: 'Recommandé • Vision menu haute précision, OCR & Génération rapide',
+    badge: 'Recommended'
+  },
+  {
+    id: 'claude-sonnet-5',
+    name: 'Claude Sonnet 5',
+    family: 'sonnet',
+    tier: 'Sonnet',
+    descriptionEn: 'Next-Gen Frontier Speed & Multimodal Vision',
+    descriptionFr: 'Nouvelle génération, vitesse frontière & vision multimodale',
+    badge: 'Next-Gen'
+  },
+  // Haiku Models
+  {
+    id: 'claude-haiku-4-5-20251001',
+    name: 'Claude Haiku 4.5 (2025-10-01)',
+    family: 'haiku',
+    tier: 'Haiku',
+    descriptionEn: 'Ultra-fast, lowest latency & cost-effective menu item structuring',
+    descriptionFr: 'Ultra-rapide, latence minimale & structuration économique des plats',
+    badge: 'Fast'
+  },
+  // Opus Models
+  {
+    id: 'claude-opus-4-6',
+    name: 'Claude Opus 4.6',
+    family: 'opus',
+    tier: 'Opus',
+    descriptionEn: 'Deep Culinary Intelligence & Restaurant Business Strategy',
+    descriptionFr: 'Intelligence culinaire approfondie & Stratégie restauration',
+    badge: 'Deep Reasoning'
+  },
+  {
+    id: 'claude-opus-4-7',
+    name: 'Claude Opus 4.7',
+    family: 'opus',
+    tier: 'Opus',
+    descriptionEn: 'Extended Multi-Step Reasoning & Complex Menu Translations',
+    descriptionFr: 'Raisonnement multi-étapes & Traductions de cartes complexes',
+    badge: 'Extended'
+  },
+  {
+    id: 'claude-opus-4-8',
+    name: 'Claude Opus 4.8',
+    family: 'opus',
+    tier: 'Opus',
+    descriptionEn: 'Enterprise-grade Cognitive Depth & Consistency',
+    descriptionFr: 'Profondeur cognitive et cohérence de niveau entreprise',
+    badge: 'Enterprise'
+  },
+  {
+    id: 'claude-opus-5',
+    name: 'Claude Opus 5',
+    family: 'opus',
+    tier: 'Opus',
+    descriptionEn: 'Flagship Frontier Model with Maximum Analytical Power',
+    descriptionFr: 'Modèle frontière de pointe à puissance analytique maximale',
+    badge: 'Frontier'
+  },
+  {
+    id: 'claude-opus-5-5',
+    name: 'Claude Opus 5.5',
+    family: 'opus',
+    tier: 'Opus',
+    descriptionEn: 'Ultimate Frontier Precision & Complex Gastronomic Knowledge',
+    descriptionFr: 'Précision frontière ultime & Connaissances gastronomiques complexes',
+    badge: 'Ultimate'
+  },
+  // Legacy / fallback options
+  {
+    id: 'claude-3-7-sonnet',
+    name: 'Claude 3.7 Sonnet (Legacy)',
+    family: 'legacy',
+    tier: 'Legacy',
+    descriptionEn: 'Previous Default Model',
+    descriptionFr: 'Ancien modèle par défaut',
+    badge: 'Legacy'
+  },
+  {
+    id: 'claude-3-5-haiku',
+    name: 'Claude 3.5 Haiku (Legacy)',
+    family: 'legacy',
+    tier: 'Legacy',
+    descriptionEn: 'Previous Haiku Generation',
+    descriptionFr: 'Ancienne génération Haiku',
+    badge: 'Legacy'
+  }
+];
+
+
 

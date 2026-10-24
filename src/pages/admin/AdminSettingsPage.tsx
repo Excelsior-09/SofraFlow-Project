@@ -111,7 +111,7 @@ export const AdminSettingsPage: React.FC = () => {
                   {isEn ? 'Zina AI Consumption Quotas & Cost Controls' : 'Plafonds de Consommation & Alertes Coûts IA Zina'}
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  {isEn ? 'Configure maximum allowable Claude API spend per calendar month before alerting.' : 'Définition du seuil d’alerte de dépenses mensuelles pour l’API Claude.'}
+                  {isEn ? 'Configure Claude API key, model fleet (Sonnet 4.6/5, Haiku 4.5, Opus 4.6-5.5), and monthly budget.' : 'Configuration de la clé Claude API, de la flotte de modèles (Sonnet 4.6/5, Haiku 4.5, Opus 4.6-5.5) et du budget mensuel.'}
                 </p>
               </div>
             </div>

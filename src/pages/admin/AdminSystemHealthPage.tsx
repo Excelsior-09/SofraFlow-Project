@@ -61,7 +61,7 @@ export const AdminSystemHealthPage: React.FC = () => {
       status: health?.claudeApiStatus === 'configured' ? 'healthy' : 'degraded',
       latency: '~1.8 s',
       icon: Cpu,
-      details: 'Models: claude-3-7-sonnet & claude-3-5-haiku'
+      details: 'Models: Claude Sonnet (4.6/5), Haiku (4.5), Opus (4.6-5.5)'
     },
     {
       name: 'Frontend Client & SPA Routing',

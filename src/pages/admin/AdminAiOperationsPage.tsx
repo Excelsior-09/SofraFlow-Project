@@ -26,7 +26,7 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import { adminService } from '../../services/adminService';
-import { AiUsageEventRecord, ClaudeApiConfigRecord } from '../../types';
+import { AiUsageEventRecord, ClaudeApiConfigRecord, AVAILABLE_CLAUDE_MODELS } from '../../types';
 
 export const AdminAiOperationsPage: React.FC = () => {
   const { language } = useLanguage();
@@ -39,7 +39,7 @@ export const AdminAiOperationsPage: React.FC = () => {
   const [claudeConfig, setClaudeConfig] = useState<ClaudeApiConfigRecord | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [newApiKey, setNewApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState('claude-3-7-sonnet');
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-6');
   const [monthlyBudgetUsd, setMonthlyBudgetUsd] = useState(100);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isTestingHealth, setIsTestingHealth] = useState(false);
@@ -55,7 +55,7 @@ export const AdminAiOperationsPage: React.FC = () => {
       setEvents(eventsData);
       setClaudeConfig(configData);
       if (configData) {
-        setSelectedModel(configData.modelName);
+        setSelectedModel(configData.modelName || 'claude-sonnet-4-6');
         setMonthlyBudgetUsd(configData.monthlyBudgetUsd);
       }
     } catch (err) {
@@ -71,27 +71,54 @@ export const AdminAiOperationsPage: React.FC = () => {
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newApiKey.trim()) return;
+    if (!newApiKey.trim() && !claudeConfig?.isConfigured) return;
 
     setIsSavingKey(true);
     setConfigFeedback(null);
     try {
       const res = await adminService.saveClaudeApiKey(
-        newApiKey,
+        newApiKey.trim() ? newApiKey : '',
         selectedModel,
         Number(monthlyBudgetUsd)
       );
 
       if (!res.success) {
-        setConfigFeedback({ type: 'error', message: res.error || 'Erreur lors de l’enregistrement de la clé.' });
+        setConfigFeedback({ type: 'error', message: res.error || 'Erreur lors de la configuration.' });
       } else {
-        setConfigFeedback({ type: 'success', message: res.message || 'Clé Claude API enregistrée et chiffrée avec succès.' });
+        setConfigFeedback({ type: 'success', message: res.message || 'Configuration Claude API enregistrée et chiffrée avec succès.' });
         if (res.config) setClaudeConfig(res.config);
         setNewApiKey('');
         setShowConfigModal(false);
       }
     } catch (err: any) {
       setConfigFeedback({ type: 'error', message: err.message || 'Erreur de connexion au coffre-fort.' });
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
+  const handleQuickSwitchModel = async (modelId: string) => {
+    if (!claudeConfig?.isConfigured) {
+      setSelectedModel(modelId);
+      setShowConfigModal(true);
+      return;
+    }
+    setIsSavingKey(true);
+    setConfigFeedback(null);
+    try {
+      const res = await adminService.saveClaudeApiKey('', modelId, claudeConfig.monthlyBudgetUsd);
+      if (res.success) {
+        setConfigFeedback({
+          type: 'success',
+          message: isEn ? `Active Claude model switched to ${modelId}` : `Modèle Claude actif basculé vers ${modelId}`
+        });
+        if (res.config) setClaudeConfig(res.config);
+        setSelectedModel(modelId);
+      } else {
+        setConfigFeedback({ type: 'error', message: res.error || 'Erreur lors du basculement de modèle.' });
+      }
+    } catch (err: any) {
+      setConfigFeedback({ type: 'error', message: err.message || 'Erreur lors du basculement de modèle.' });
     } finally {
       setIsSavingKey(false);
     }
@@ -251,11 +278,12 @@ export const AdminAiOperationsPage: React.FC = () => {
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider block">
               {isEn ? 'Active Model' : 'Modèle Claude Actif'}
             </span>
-            <div className="font-mono font-bold text-xs text-[var(--text-primary)]">
-              {claudeConfig?.modelName || 'claude-3-7-sonnet'}
+            <div className="font-mono font-bold text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1.5 truncate">
+              <Cpu className="w-3.5 h-3.5 shrink-0 text-purple-500" />
+              <span className="truncate">{claudeConfig?.modelName || 'claude-sonnet-4-6'}</span>
             </div>
             <span className="text-[10px] text-[var(--text-secondary)] block">
-              Fallback: claude-3-5-haiku
+              {AVAILABLE_CLAUDE_MODELS.find(m => m.id === (claudeConfig?.modelName || 'claude-sonnet-4-6'))?.name || 'Claude Sonnet 4.6'}
             </span>
           </div>
 
@@ -310,12 +338,105 @@ export const AdminAiOperationsPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* AVAILABLE CLAUDE MODELS FLEET */}
+        <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>{isEn ? 'Available Claude Model Fleet (8 Models Available)' : 'Flotte de Modèles Claude Disponibles (8 Modèles)'}</span>
+              </h3>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                {isEn
+                  ? 'Supported by your key. Click any model to switch the active generation engine for Zina AI.'
+                  : 'Modèles compatibles avec votre clé. Cliquez sur un modèle pour l’activer instantanément pour Zina AI.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold border border-blue-500/20">Sonnet (Vision)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20">Haiku (Speed)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20">Opus (Frontier)</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {AVAILABLE_CLAUDE_MODELS.filter(m => m.family !== 'legacy').map((model) => {
+              const isActive = (claudeConfig?.modelName || 'claude-sonnet-4-6') === model.id;
+              const familyColor =
+                model.family === 'sonnet'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20'
+                  : model.family === 'haiku'
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                  : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20';
+
+              return (
+                <div
+                  key={model.id}
+                  className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
+                    isActive
+                      ? 'bg-purple-500/10 border-purple-500 shadow-xs ring-1 ring-purple-500/30'
+                      : 'bg-[var(--bg-page)] border-[var(--border-subtle)] hover:border-purple-300 dark:hover:border-purple-800'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${familyColor}`}>
+                        {model.tier}
+                      </span>
+                      {isActive ? (
+                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 bg-purple-500/15 px-2 py-0.5 rounded-full">
+                          <Check className="w-3 h-3" />
+                          {isEn ? 'Active' : 'Actif'}
+                        </span>
+                      ) : model.badge ? (
+                        <span className="text-[9px] font-semibold text-[var(--text-secondary)] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+                          {model.badge}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--text-primary)] leading-tight">{model.name}</h4>
+                      <code className="text-[10px] text-[var(--text-secondary)] font-mono block mt-0.5 truncate" title={model.id}>
+                        {model.id}
+                      </code>
+                    </div>
+
+                    <p className="text-[10px] text-[var(--text-secondary)] leading-snug line-clamp-2">
+                      {isEn ? model.descriptionEn : model.descriptionFr}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 mt-2 border-t border-[var(--border-subtle)]/60">
+                    {isActive ? (
+                      <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-1 py-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{isEn ? 'Current Engine' : 'Moteur Actuel'}</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSavingKey}
+                        onClick={() => handleQuickSwitchModel(model.id)}
+                        className="w-full py-1 px-2 rounded-lg bg-[var(--bg-card)] hover:bg-purple-600 hover:text-white border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1"
+                      >
+                        <Zap className="w-3 h-3 text-purple-500" />
+                        <span>{isEn ? 'Activate' : 'Activer'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </Card>
 
       {/* MODAL: CONFIGURE / ROTATE CLAUDE API KEY */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-2xl space-y-5">
+          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center">
@@ -323,10 +444,10 @@ export const AdminAiOperationsPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-[var(--text-primary)] font-display">
-                    {isEn ? 'Configure Claude API Key' : 'Configuration de la Clé Claude API'}
+                    {isEn ? 'Configure Claude API Key & Models' : 'Configuration de la Clé & Modèles Claude'}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    {isEn ? 'Enter the Anthropic API key to securely power Zina AI.' : 'Renseignez la clé secrète Anthropic pour Zina AI.'}
+                    {isEn ? 'Manage Anthropic credentials and active reasoning engine.' : 'Gérez les identifiants Anthropic et le modèle de raisonnement actif.'}
                   </p>
                 </div>
               </div>
@@ -341,19 +462,28 @@ export const AdminAiOperationsPage: React.FC = () => {
             <form onSubmit={handleSaveConfig} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[var(--text-primary)] block">
-                  {isEn ? 'Anthropic API Key' : 'Clé API Anthropic (sk-ant-...)'} <span className="text-rose-500">*</span>
+                  {isEn ? 'Anthropic API Key' : 'Clé API Anthropic (sk-ant-...)'}{' '}
+                  {!claudeConfig?.isConfigured && <span className="text-rose-500">*</span>}
                 </label>
                 <input
                   type="password"
-                  required
+                  required={!claudeConfig?.isConfigured}
                   value={newApiKey}
                   onChange={(e) => setNewApiKey(e.target.value)}
-                  placeholder="sk-ant-api03-..."
+                  placeholder={
+                    claudeConfig?.isConfigured
+                      ? (isEn ? '•••••••••••••••• (Leave blank to keep current key)' : '•••••••••••••••• (Laisser vide pour conserver la clé actuelle)')
+                      : 'sk-ant-api03-...'
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   autoComplete="off"
                 />
                 <span className="text-[10px] text-[var(--text-secondary)] block">
-                  {isEn
+                  {claudeConfig?.isConfigured
+                    ? isEn
+                      ? 'Leave blank to update model/budget only, or enter a new secret key to rotate.'
+                      : 'Laissez vide pour changer uniquement le modèle ou le budget, ou saisissez une nouvelle clé pour la renouveler.'
+                    : isEn
                     ? 'The key will be encrypted in the server vault and never sent back to browsers.'
                     : 'La clé sera chiffrée dans le coffre serveur PostgreSQL et ne sera jamais renvoyée au navigateur.'}
                 </span>
@@ -369,8 +499,24 @@ export const AdminAiOperationsPage: React.FC = () => {
                     onChange={(e) => setSelectedModel(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   >
-                    <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Menu Vision)</option>
-                    <option value="claude-3-5-haiku">Claude 3.5 Haiku (Fast & Cheap)</option>
+                    <optgroup label={isEn ? "Sonnet (Menu Vision & OCR)" : "Famille Sonnet (Vision Menu & OCR)"}>
+                      <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recommandé • Vision)</option>
+                      <option value="claude-sonnet-5">Claude Sonnet 5 (Next-Gen Performance)</option>
+                    </optgroup>
+                    <optgroup label={isEn ? "Haiku (Ultra-Fast & Economical)" : "Famille Haiku (Ultra-Rapide & Économique)"}>
+                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (2025-10-01 • Faible Latence)</option>
+                    </optgroup>
+                    <optgroup label={isEn ? "Opus (Frontier & Deep Reasoning)" : "Famille Opus (Frontière & Raisonnement Approfondi)"}>
+                      <option value="claude-opus-4-6">Claude Opus 4.6 (Analyse Culinaire & Stratégie)</option>
+                      <option value="claude-opus-4-7">Claude Opus 4.7 (Raisonnement Multi-Étapes)</option>
+                      <option value="claude-opus-4-8">Claude Opus 4.8 (Intelligence Entreprise)</option>
+                      <option value="claude-opus-5">Claude Opus 5 (Modèle Frontière de Référence)</option>
+                      <option value="claude-opus-5-5">Claude Opus 5.5 (Précision Ultime & Menus Complexes)</option>
+                    </optgroup>
+                    <optgroup label={isEn ? "Legacy Models" : "Modèles Hérités"}>
+                      <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Legacy)</option>
+                      <option value="claude-3-5-haiku">Claude 3.5 Haiku (Legacy)</option>
+                    </optgroup>
                   </select>
                 </div>
 
@@ -409,18 +555,18 @@ export const AdminAiOperationsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingKey || !newApiKey.trim()}
+                  disabled={isSavingKey || (!newApiKey.trim() && !claudeConfig?.isConfigured)}
                   className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isSavingKey ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>{isEn ? 'Encrypting...' : 'Chiffrement...'}</span>
+                      <span>{isEn ? 'Saving...' : 'Enregistrement...'}</span>
                     </>
                   ) : (
                     <>
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>{isEn ? 'Save & Encrypt Key' : 'Enregistrer et Chiffrer'}</span>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isEn ? 'Save Configuration' : 'Enregistrer la Configuration'}</span>
                     </>
                   )}
                 </button>

@@ -742,7 +742,7 @@ export const adminService = {
       return {
         isConfigured: true,
         keyFingerprint: 'sk-ant-api03-••••••••••••••••••••••••••••••••w9cA',
-        modelName: 'claude-3-7-sonnet',
+        modelName: 'claude-sonnet-4-6',
         monthlyBudgetUsd: 150.0,
         maxTokensPerRequest: 4096,
         lastHealthCheckAt: new Date().toISOString(),
@@ -761,7 +761,7 @@ export const adminService = {
         return {
           isConfigured: Boolean(data.is_configured),
           keyFingerprint: data.key_fingerprint || null,
-          modelName: data.model_name || 'claude-3-7-sonnet',
+          modelName: data.model_name || 'claude-sonnet-4-6',
           monthlyBudgetUsd: Number(data.monthly_budget_usd || 100),
           maxTokensPerRequest: Number(data.max_tokens_per_request || 4096),
           lastHealthCheckAt: data.last_health_check_at || null,
@@ -780,7 +780,7 @@ export const adminService = {
     return {
       isConfigured: false,
       keyFingerprint: null,
-      modelName: 'claude-3-7-sonnet',
+      modelName: 'claude-sonnet-4-6',
       monthlyBudgetUsd: 100,
       maxTokensPerRequest: 4096,
       lastHealthCheckAt: null,
@@ -794,16 +794,58 @@ export const adminService = {
   },
 
   /**
-   * Saves or rotates the Claude API key securely into server vault.
+   * Saves or rotates the Claude API key securely into server vault,
+   * or updates the default model/budget without requiring the secret key.
    * Never exposed to frontend or logged in plain text.
    */
   async saveClaudeApiKey(
-    apiKey: string,
-    model = 'claude-3-7-sonnet',
+    apiKey?: string,
+    model = 'claude-sonnet-4-6',
     budgetUsd = 100,
     maxTokens = 4096
   ): Promise<{ success: boolean; message?: string; error?: string; config?: ClaudeApiConfigRecord }> {
-    const trimmed = apiKey.trim();
+    const trimmed = (apiKey || '').trim();
+
+    // Model / budget update without rotating key
+    if (!trimmed) {
+      if (!isSupabaseConfigured) {
+        const current = await this.getClaudeConfig();
+        const updatedConfig: ClaudeApiConfigRecord = {
+          ...current,
+          modelName: model,
+          monthlyBudgetUsd: budgetUsd,
+          maxTokensPerRequest: maxTokens
+        };
+        return {
+          success: true,
+          message: `Modèle Claude API configuré : ${model}`,
+          config: updatedConfig
+        };
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('save_claude_api_key', {
+          p_api_key: '',
+          p_model: model,
+          p_budget_usd: budgetUsd,
+          p_max_tokens: maxTokens
+        });
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        const updated = await this.getClaudeConfig();
+        return {
+          success: true,
+          message: data?.message || `Modèle Claude API configuré : ${model}`,
+          config: updated
+        };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Erreur lors de la mise à jour du modèle.' };
+      }
+    }
+
     if (!trimmed.startsWith('sk-ant-') || trimmed.length < 25) {
       return {
         success: false,
