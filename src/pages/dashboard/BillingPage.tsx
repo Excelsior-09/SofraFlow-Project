@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { adminService } from '../../services/adminService';
 import {
   CreditCard,
   Check,
@@ -153,7 +155,11 @@ export const BillingPage: React.FC = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
   // Admin verification section state — restricted to authenticated platform administrators
-  const isAdminUser = Boolean(user?.role === 'admin' || user?.email === 'admin@sofraflow.com');
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  useEffect(() => {
+    adminService.checkIsSuperAdmin().then(setIsSuperAdminUser);
+  }, [user]);
+  const isAdminUser = isSuperAdminUser || Boolean(user?.role === 'admin' || user?.email === 'admin@sofraflow.com');
   const showAdminSection = isAdminUser;
   const [allAdminRequests, setAllAdminRequests] = useState<SubscriptionPaymentRequest[]>([]);
   const [adminFilter, setAdminFilter] = useState<'all' | 'under_review' | 'approved' | 'rejected'>('all');
@@ -396,9 +402,16 @@ export const BillingPage: React.FC = () => {
       const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
 
       if (isSupabaseConfigured) {
-        await supabaseService.updatePaymentRequestStatus(request.id, 'approved', {
-          verifierId: verifierName
-        });
+        try {
+          const res = await adminService.approvePayment(request.id, `Approved by ${verifierName}`);
+          if (!res.success && res.error) {
+            throw new Error(res.error);
+          }
+        } catch {
+          await supabaseService.updatePaymentRequestStatus(request.id, 'approved', {
+            verifierId: verifierName
+          });
+        }
       }
       db.updatePaymentRequestStatus(request.id, 'approved', {
         verifierId: verifierName
@@ -428,10 +441,17 @@ export const BillingPage: React.FC = () => {
       const verifierName = user?.fullName || user?.email || (isEn ? 'SOFRAFLOW Administrator' : 'Administrateur SOFRAFLOW');
 
       if (isSupabaseConfigured) {
-        await supabaseService.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
-          reason: rejectionReason.trim(),
-          verifierId: verifierName
-        });
+        try {
+          const res = await adminService.rejectPayment(rejectingRequestId, rejectionReason.trim());
+          if (!res.success && res.error) {
+            throw new Error(res.error);
+          }
+        } catch {
+          await supabaseService.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
+            reason: rejectionReason.trim(),
+            verifierId: verifierName
+          });
+        }
       }
       db.updatePaymentRequestStatus(rejectingRequestId, 'rejected', {
         reason: rejectionReason.trim(),
@@ -1784,6 +1804,15 @@ export const BillingPage: React.FC = () => {
                   {isEn ? "Financial verification of bank transfers and secure subscription activations." : "Vérification financière des virements bancaires et activations sécurisées d'abonnements."}
                 </p>
               </div>
+
+              {/* Link to dedicated Super Admin reconciliation portal with MFA */}
+              <Link
+                to="/admin/payments"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {isEn ? "Open Super Admin Portal →" : "Ouvrir Portail Super Admin →"}
+              </Link>
 
               {/* Status filter */}
               <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">

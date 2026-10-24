@@ -44,6 +44,21 @@ import { HelpPage } from './pages/dashboard/HelpPage';
 import { PublicMenuPage } from './pages/customer/PublicMenuPage';
 import { OrderConfirmationPage } from './pages/customer/OrderConfirmationPage';
 
+// Super Admin Pages & Guard
+import { AdminRoute } from './components/admin/AdminRoute';
+import { AdminOverviewPage } from './pages/admin/AdminOverviewPage';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage';
+import { AdminRestaurantsPage } from './pages/admin/AdminRestaurantsPage';
+import { AdminSubscriptionsPage } from './pages/admin/AdminSubscriptionsPage';
+import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
+import { AdminFinancePage } from './pages/admin/AdminFinancePage';
+import { AdminAiOperationsPage } from './pages/admin/AdminAiOperationsPage';
+import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
+import { AdminSecurityPage } from './pages/admin/AdminSecurityPage';
+import { AdminSystemHealthPage } from './pages/admin/AdminSystemHealthPage';
+import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+
 const SolutionSlugRedirect: React.FC = () => {
   const { industrySlug } = useParams<{ industrySlug?: string }>();
   return <Navigate to={industrySlug ? `/solutions/${industrySlug}` : '/solutions'} replace />;
@@ -104,6 +119,29 @@ export function App() {
                   <Route path="/app/profile" element={<ProfilePage />} />
                   <Route path="/app/billing" element={<BillingPage />} />
                   <Route path="/app/help" element={<HelpPage />} />
+                </Route>
+
+                {/* Protected Super Admin Platform Governance Routes */}
+                <Route
+                  element={
+                    <ErrorBoundary>
+                      <AdminRoute />
+                    </ErrorBoundary>
+                  }
+                >
+                  <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+                  <Route path="/admin/overview" element={<AdminOverviewPage />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/restaurants" element={<AdminRestaurantsPage />} />
+                  <Route path="/admin/subscriptions" element={<AdminSubscriptionsPage />} />
+                  <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+                  <Route path="/admin/finance" element={<AdminFinancePage />} />
+                  <Route path="/admin/ai-operations" element={<AdminAiOperationsPage />} />
+                  <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="/admin/security" element={<AdminSecurityPage />} />
+                  <Route path="/admin/system-health" element={<AdminSystemHealthPage />} />
+                  <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+                  <Route path="/admin/settings" element={<AdminSettingsPage />} />
                 </Route>
 
                 {/* Customer-facing Digital Menu Routes */}

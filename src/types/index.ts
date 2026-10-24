@@ -289,3 +289,134 @@ export interface SubscriptionPaymentRequest {
   verifiedBy?: string;
 }
 
+// ============================================================================
+// SUPER ADMIN DASHBOARD TYPES
+// ============================================================================
+
+export interface PlatformExecutiveAnalytics {
+  totalUsers: number;
+  newUsers30d: number;
+  totalRestaurants: number;
+  activeRestaurants: number;
+  publishedMenusCount: number;
+  restaurantsWithOrders: number;
+  activeSubscriptionsCount: number;
+  pendingPaymentsCount: number;
+  monthlyRecurringRevenue: number;
+  totalCollectedRevenue: number;
+  totalOperatingExpenses: number;
+  netOperatingResult: number;
+  claudeApiSpendMad: number;
+  totalAiRequests: number;
+  totalOrdersCount: number;
+  totalOrdersVolumeMad: number;
+  generatedAt: string;
+}
+
+export type OperatingExpenseCategory =
+  | 'claude_api'
+  | 'supabase'
+  | 'hosting'
+  | 'domain_email'
+  | 'software'
+  | 'advertising'
+  | 'contractor'
+  | 'payment_fees'
+  | 'office_legal'
+  | 'other';
+
+export interface OperatingExpenseRecord {
+  id: string;
+  expenseDate: string;
+  category: OperatingExpenseCategory;
+  description: string;
+  amount: number;
+  currency: string;
+  vendor?: string;
+  receiptUrl?: string;
+  paymentStatus: 'paid' | 'pending' | 'scheduled';
+  isRecurring: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiUsageEventRecord {
+  id: string;
+  createdAt: string;
+  provider: string;
+  model: string;
+  feature: 'menu_scan' | 'menu_generate' | 'dish_description' | 'menu_translation' | 'chat_assistant' | 'other';
+  restaurantId?: string;
+  restaurantName?: string;
+  userId?: string;
+  status: 'success' | 'error' | 'rate_limited' | 'quota_exceeded' | 'timeout';
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  estimatedCostMad: number;
+  latencyMs: number;
+  requestId?: string;
+  errorCategory?: string;
+  errorMessage?: string;
+}
+
+export interface AdminUserRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: 'admin' | 'owner' | 'manager' | 'staff';
+  preferredLanguage: string;
+  createdAt: string;
+  updatedAt: string;
+  restaurantCount: number;
+  isSuspended?: boolean;
+}
+
+export interface AdminRestaurantRecord {
+  id: string;
+  name: string;
+  slug: string;
+  businessType: string;
+  ownerId: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
+  city: string;
+  address?: string;
+  phone?: string;
+  status: 'active' | 'inactive' | 'suspended';
+  subscriptionPlan: 'starter' | 'growth' | 'pro' | 'enterprise';
+  subscriptionStatus: 'active' | 'trial' | 'past_due' | 'cancelled';
+  menuCount: number;
+  publishedMenuCount: number;
+  orderCount: number;
+  createdAt: string;
+}
+
+export interface AdminAuditLogRecord {
+  id: string;
+  restaurantId?: string;
+  restaurantName?: string;
+  actorUserId?: string;
+  actorName?: string;
+  eventType: string;
+  entityType: string;
+  entityId?: string;
+  metadata: Record<string, any>;
+  createdAt: string;
+}
+
+export interface AdminSystemHealthReport {
+  supabaseStatus: 'healthy' | 'degraded' | 'offline';
+  supabaseLatencyMs: number;
+  databaseTablesCount: number;
+  authStatus: 'healthy' | 'degraded' | 'offline';
+  claudeApiStatus: 'configured' | 'missing_key' | 'unreachable';
+  environment: string;
+  timestamp: string;
+}
+
+
