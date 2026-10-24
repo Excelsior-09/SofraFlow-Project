@@ -22,8 +22,45 @@ BEGIN
   END IF;
 END $$;
 
--- 2. REPAIR & SYNCHRONIZE ALL AUTH USERS INTO PROFILES TABLE
+-- 2. ENHANCE ROLE ESCALATION TRIGGER TO ALLOW VERIFIED SUPER ADMIN ACCOUNTS & SYSTEM ROLES
+-- Preserves anti-privilege escalation against ordinary users, while permitting:
+-- a) Users verified in public.platform_super_admins
+-- b) Authenticated Super Admins
+-- c) Migration and administration roles (postgres, service_role, supabase_admin)
+CREATE OR REPLACE FUNCTION public.prevent_profile_role_escalation()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_is_registered_admin BOOLEAN;
+BEGIN
+  IF NEW.role = 'admin' AND (OLD.role IS NULL OR OLD.role <> 'admin') THEN
+    -- Check if the target user is an active registered super admin in the dedicated registry
+    SELECT EXISTS (
+      SELECT 1 FROM public.platform_super_admins
+      WHERE user_id = NEW.id AND is_active = true
+    ) INTO v_is_registered_admin;
+
+    -- Allow role assignment if:
+    -- 1. Target user is legitimately recorded in platform_super_admins
+    -- 2. Caller is an authenticated super admin
+    -- 3. Execution is running from service_role or database admin (migrations, SQL editor, seed)
+    IF NOT (
+      v_is_registered_admin OR
+      public.is_super_admin() OR
+      current_user IN ('postgres', 'service_role', 'supabase_admin') OR
+      auth.role() = 'service_role'
+    ) THEN
+      RAISE EXCEPTION 'unauthorized_role_escalation: Only platform super administrators can grant the admin role.'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+-- 3. REPAIR & SYNCHRONIZE ALL AUTH USERS INTO PROFILES TABLE
 -- Ensures every auth.users account has a matching profile record with email and correct role.
+ALTER TABLE public.profiles DISABLE TRIGGER trg_prevent_role_escalation;
+
 INSERT INTO public.profiles (id, full_name, email, role, preferred_language, created_at, updated_at)
 SELECT 
   u.id,
@@ -46,6 +83,8 @@ UPDATE public.profiles p
 SET email = u.email
 FROM auth.users u
 WHERE p.id = u.id AND (p.email IS NULL OR p.email = '');
+
+ALTER TABLE public.profiles ENABLE TRIGGER trg_prevent_role_escalation;
 
 -- 3. UPDATE USER CREATION TRIGGER ON AUTH.USERS
 CREATE OR REPLACE FUNCTION public.handle_new_user()
