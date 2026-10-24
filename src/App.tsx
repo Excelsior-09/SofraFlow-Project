@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -44,6 +44,11 @@ import { HelpPage } from './pages/dashboard/HelpPage';
 import { PublicMenuPage } from './pages/customer/PublicMenuPage';
 import { OrderConfirmationPage } from './pages/customer/OrderConfirmationPage';
 
+const SolutionSlugRedirect: React.FC = () => {
+  const { industrySlug } = useParams<{ industrySlug?: string }>();
+  return <Navigate to={industrySlug ? `/solutions/${industrySlug}` : '/solutions'} replace />;
+};
+
 export function App() {
   return (
     <ThemeProvider>
@@ -68,6 +73,8 @@ export function App() {
                 {/* Industry Solutions Landing Pages */}
                 <Route path="/solutions" element={<SolutionsIndexPage />} />
                 <Route path="/solutions/:industrySlug" element={<IndustrySolutionPage />} />
+                <Route path="/solution" element={<Navigate to="/solutions" replace />} />
+                <Route path="/solution/:industrySlug" element={<SolutionSlugRedirect />} />
 
                 {/* Content Marketing & Knowledge Base (Blog) */}
                 <Route path="/blog" element={<BlogIndexPage />} />

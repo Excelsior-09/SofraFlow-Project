@@ -130,7 +130,7 @@ export const SolutionsIndexPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans text-ink-main selection:bg-[#e35d25] selection:text-white">
+    <div className="min-h-screen bg-[var(--bg-page)] dark:bg-dark-page flex flex-col font-sans text-ink-main dark:text-dark-text selection:bg-[#e35d25] selection:text-white transition-colors duration-200">
       <SEO
         title={isEn ? "Industry Solutions: Digital Menus & QR Ordering in Morocco | SOFRAFLOW" : "Solutions de Menus Digitaux & Catalogues QR par Secteur au Maroc | SOFRAFLOW"}
         description={isEn ? "Explore tailored digital menus and QR solutions designed for restaurants, cafes, bakeries, snacks, ice cream parlors, hotels, and spas in Morocco." : "Découvrez nos solutions de cartes digitales et menus QR code adaptés aux restaurants, cafés, snacks, boulangeries, glaciers, hôtels et salons au Maroc."}
@@ -142,15 +142,15 @@ export const SolutionsIndexPage: React.FC = () => {
       {/* =========================================================
           1. HERO HEADER
       ========================================================= */}
-      <section className="relative pt-16 pb-16 overflow-hidden bg-gradient-to-b from-[#FFFDF9] via-[#FAF6EF] to-[#FAF8F5] border-b border-gray-200/70 text-center">
+      <section className="relative pt-16 pb-16 overflow-hidden bg-gradient-to-b from-[#FFFDF9] via-[#FAF6EF] to-[#FAF8F5] dark:from-dark-page dark:via-dark-card dark:to-dark-page border-b border-gray-200/70 dark:border-dark-border text-center transition-colors duration-200">
         <div className="absolute top-0 right-1/4 -mt-20 w-96 h-96 rounded-full bg-[#e35d25]/10 blur-3xl pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e35d25]/10 border border-[#e35d25]/20 text-[#e35d25] text-xs font-bold tracking-wide">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e35d25]/10 dark:bg-[#e35d25]/15 border border-[#e35d25]/20 dark:border-[#e35d25]/30 text-[#e35d25] text-xs font-bold tracking-wide">
             <Sparkles className="w-4 h-4 text-[#e35d25]" />
             <span>{isEn ? 'Tailored Hospitality Solutions' : 'Secteurs & Métiers au Maroc'}</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-black text-forest font-display tracking-tight leading-[1.15]">
+          <h1 className="text-4xl sm:text-5xl font-black text-forest dark:text-white font-display tracking-tight leading-[1.15]">
             {isEn ? (
               <>Solutions built for your <span className="text-[#e35d25]">exact business model</span></>
             ) : (
@@ -158,7 +158,7 @@ export const SolutionsIndexPage: React.FC = () => {
             )}
           </h1>
 
-          <p className="text-base sm:text-lg text-ink-secondary max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-ink-secondary dark:text-dark-secondary max-w-2xl mx-auto leading-relaxed">
             {isEn
               ? 'Whether you serve terrace coffees, gourmet Moroccan dinners, artisan pastries, or wellness spa treatments, SOFRAFLOW fits right in.'
               : 'Que vous serviez un café en terrasse, un repas gastronomique, des pâtisseries fines ou des prestations de bien-être, SOFRAFLOW simplifie la présentation de votre offre sur mobile.'}
@@ -169,39 +169,39 @@ export const SolutionsIndexPage: React.FC = () => {
       {/* =========================================================
           2. INDUSTRY SHOWCASE CARDS (7 Photographic Cards)
       ========================================================= */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-dark-page transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {industries.map((ind) => (
               <div
                 key={ind.slug}
-                className="bg-[#FAF8F5] rounded-3xl border border-gray-200/90 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+                className="bg-[#FAF8F5] dark:bg-dark-card rounded-3xl border border-gray-200/90 dark:border-dark-border shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden flex flex-col justify-between group"
               >
                 <div>
                   {/* Photo header */}
-                  <div className="relative h-52 overflow-hidden bg-gray-100">
+                  <div className="relative h-52 overflow-hidden bg-gray-100 dark:bg-dark-surface">
                     <img
                       src={ind.image}
                       alt={ind.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    <span className="absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-forest shadow-sm">
+                    <span className="absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm text-forest dark:text-emerald-300 border border-transparent dark:border-dark-border shadow-sm">
                       {ind.tag}
                     </span>
                   </div>
 
                   {/* Body */}
                   <div className="p-6 space-y-4">
-                    <h3 className="text-xl font-bold text-forest font-display">{ind.name}</h3>
-                    <p className="text-xs text-ink-secondary leading-relaxed">
+                    <h3 className="text-xl font-bold text-forest dark:text-white font-display">{ind.name}</h3>
+                    <p className="text-xs text-ink-secondary dark:text-dark-secondary leading-relaxed">
                       {ind.desc}
                     </p>
 
-                    <div className="space-y-2 pt-2 border-t border-gray-200/60">
+                    <div className="space-y-2 pt-2 border-t border-gray-200/60 dark:border-dark-border">
                       {ind.bullets.map((b, bIdx) => (
-                        <div key={bIdx} className="flex items-center gap-2 text-xs font-semibold text-ink-main">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <div key={bIdx} className="flex items-center gap-2 text-xs font-semibold text-ink-main dark:text-dark-text">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                           <span>{b}</span>
                         </div>
                       ))}
@@ -229,66 +229,66 @@ export const SolutionsIndexPage: React.FC = () => {
       {/* =========================================================
           3. SOCIAL PROOF QUOTES FROM MOROCCAN CITIES
       ========================================================= */}
-      <section className="py-20 bg-[#FAF8F5] border-y border-gray-200/70">
+      <section className="py-20 bg-[#FAF8F5] dark:bg-dark-card/40 border-y border-gray-200/70 dark:border-dark-border transition-colors duration-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-3">
             <span className="text-xs font-bold text-[#e35d25] uppercase tracking-wider">
               {isEn ? 'Frontline Feedback' : 'Retours d’Expérience au Maroc'}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest font-display">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest dark:text-white font-display">
               {isEn ? 'What Moroccan establishment owners say' : 'Ce que disent nos partenaires restaurateurs'}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-7 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-dark-card p-7 rounded-3xl border border-gray-200 dark:border-dark-border shadow-sm dark:shadow-none space-y-4">
               <div className="flex text-amber-400">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-xs text-ink-secondary leading-relaxed italic">
+              <p className="text-xs text-ink-secondary dark:text-dark-secondary leading-relaxed italic">
                 {isEn
                   ? '"Our terrace in Marrakech has 35 tables. Waiters were overwhelmed on weekends. With Sofraflow, orders arrive directly on WhatsApp in the kitchen. Average turnover increased by 15%."'
                   : '"Notre terrasse à Marrakech compte 35 tables. Les serveurs étaient débordés le weekend. Avec Sofraflow, les commandes arrivent directement sur WhatsApp en cuisine. Le CA a augmenté de 15%."'}
               </p>
-              <div className="pt-2 border-t border-gray-100">
-                <span className="font-bold text-xs text-forest block">Mehdi B.</span>
-                <span className="text-[10px] text-gray-500">Gérant de Riad &amp; Restaurant • Marrakech</span>
+              <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                <span className="font-bold text-xs text-forest dark:text-white block">Mehdi B.</span>
+                <span className="text-[10px] text-gray-500 dark:text-dark-muted">Gérant de Riad &amp; Restaurant • Marrakech</span>
               </div>
             </div>
 
-            <div className="bg-white p-7 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-dark-card p-7 rounded-3xl border border-gray-200 dark:border-dark-border shadow-sm dark:shadow-none space-y-4">
               <div className="flex text-amber-400">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-xs text-ink-secondary leading-relaxed italic">
+              <p className="text-xs text-ink-secondary dark:text-dark-secondary leading-relaxed italic">
                 {isEn
                   ? '"We used to reprint paper menus every month because of price updates and wear. Now we update prices in 10 seconds. The Arabic typography is gorgeous."'
                   : '"On réimprimait des menus papier chaque mois à cause des changements de prix et de l\'usure. Maintenant, on met à jour les tarifs en 10 secondes. L\'arabe est magnifique."'}
               </p>
-              <div className="pt-2 border-t border-gray-100">
-                <span className="font-bold text-xs text-forest block">Sofia L.</span>
-                <span className="text-[10px] text-gray-500">Coffee Shop Artisan • Casablanca Maarif</span>
+              <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                <span className="font-bold text-xs text-forest dark:text-white block">Sofia L.</span>
+                <span className="text-[10px] text-gray-500 dark:text-dark-muted">Coffee Shop Artisan • Casablanca Maarif</span>
               </div>
             </div>
 
-            <div className="bg-white p-7 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-dark-card p-7 rounded-3xl border border-gray-200 dark:border-dark-border shadow-sm dark:shadow-none space-y-4">
               <div className="flex text-amber-400">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-xs text-ink-secondary leading-relaxed italic">
+              <p className="text-xs text-ink-secondary dark:text-dark-secondary leading-relaxed italic">
                 {isEn
                   ? '"During peak lunch hours, waiting lines used to discourage office workers. Customers now scan the counter QR, customize sauces, and orders print right at the grill station."'
                   : '"Pendant le coup de feu de midi, la file décourageait les clients. Désormais ils scannent le QR au comptoir, choisissent leurs sauces et le bon sort immédiatement au grill."'}
               </p>
-              <div className="pt-2 border-t border-gray-100">
-                <span className="font-bold text-xs text-forest block">Karim T.</span>
-                <span className="text-[10px] text-gray-500">Snack &amp; Burger Gourmet • Rabat Agdal</span>
+              <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                <span className="font-bold text-xs text-forest dark:text-white block">Karim T.</span>
+                <span className="text-[10px] text-gray-500 dark:text-dark-muted">Snack &amp; Burger Gourmet • Rabat Agdal</span>
               </div>
             </div>
           </div>

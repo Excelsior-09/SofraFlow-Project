@@ -236,7 +236,7 @@ export const PricingPage: React.FC = () => {
       ];
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans text-ink-main selection:bg-[#e35d25] selection:text-white">
+    <div className="min-h-screen bg-[var(--bg-page)] dark:bg-dark-page flex flex-col font-sans text-ink-main dark:text-dark-text selection:bg-[#e35d25] selection:text-white transition-colors duration-200">
       <SEO
         title={isEn ? "Pricing in Moroccan Dirhams (MAD) & 0% Commission | SOFRAFLOW" : "Tarifs Menus Digitaux & QR Code en Dirhams (MAD) | SOFRAFLOW"}
         description={isEn ? "Transparent flat subscriptions with zero sales commissions for restaurants, cafes, and hospitality in Morocco. Starter (290 MAD), Growth (590 MAD), Pro (990 MAD)." : "Abonnements transparents sans commission pour restaurants, cafés et commerces au Maroc. Formules Starter (290 MAD), Growth (590 MAD) et Pro (990 MAD)."}
@@ -248,15 +248,15 @@ export const PricingPage: React.FC = () => {
       {/* =========================================================
           1. HERO & BILLING TOGGLE
       ========================================================= */}
-      <section className="relative pt-16 pb-16 overflow-hidden bg-gradient-to-b from-[#FFFDF9] via-[#FAF6EF] to-[#FAF8F5] border-b border-gray-200/70 text-center">
+      <section className="relative pt-16 pb-16 overflow-hidden bg-gradient-to-b from-[#FFFDF9] via-[#FAF6EF] to-[#FAF8F5] dark:from-dark-page dark:via-dark-card dark:to-dark-page border-b border-gray-200/70 dark:border-dark-border text-center transition-colors duration-200">
         <div className="absolute top-0 right-1/4 -mt-20 w-96 h-96 rounded-full bg-[#e35d25]/10 blur-3xl pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e35d25]/10 border border-[#e35d25]/20 text-[#e35d25] text-xs font-bold tracking-wide">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e35d25]/10 dark:bg-[#e35d25]/15 border border-[#e35d25]/20 dark:border-[#e35d25]/30 text-[#e35d25] text-xs font-bold tracking-wide">
             <Sparkles className="w-4 h-4 text-[#e35d25]" />
             <span>{isEn ? '0% Commission • Flat Pricing in MAD' : '0% Commission • Tarifs Fixes en Dirhams (MAD)'}</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-black text-forest font-display tracking-tight leading-[1.15]">
+          <h1 className="text-4xl sm:text-5xl font-black text-forest dark:text-white font-display tracking-tight leading-[1.15]">
             {isEn ? (
               <>Simple, transparent pricing <span className="text-[#e35d25]">adapted to Morocco</span></>
             ) : (
@@ -264,7 +264,7 @@ export const PricingPage: React.FC = () => {
             )}
           </h1>
 
-          <p className="text-base text-ink-secondary max-w-xl mx-auto leading-relaxed">
+          <p className="text-base text-ink-secondary dark:text-dark-secondary max-w-xl mx-auto leading-relaxed">
             {isEn
               ? 'No hidden setup fees. No sales commissions. Keep 100% of your earnings with predictable monthly pricing.'
               : 'Aucun frais de dossier caché. Aucune commission sur vos ventes. Tous les tarifs sont adaptés aux professionnels de la restauration.'}
@@ -272,13 +272,13 @@ export const PricingPage: React.FC = () => {
 
           {/* Billing Switcher */}
           <div className="pt-6 flex items-center justify-center gap-3 text-xs font-semibold">
-            <span className={billingCycle === 'monthly' ? 'text-forest font-bold' : 'text-gray-500'}>
+            <span className={billingCycle === 'monthly' ? 'text-forest dark:text-white font-bold' : 'text-gray-500 dark:text-dark-muted'}>
               {isEn ? 'Monthly billing' : 'Facturation mensuelle'}
             </span>
             <button
               onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
               className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-                billingCycle === 'annual' ? 'bg-[#e35d25]' : 'bg-gray-300'
+                billingCycle === 'annual' ? 'bg-[#e35d25]' : 'bg-gray-300 dark:bg-dark-surface'
               }`}
               aria-label={isEn ? "Switch to annual billing" : "Basculer vers la facturation annuelle"}
             >
@@ -288,7 +288,7 @@ export const PricingPage: React.FC = () => {
                 }`}
               />
             </button>
-            <span className={billingCycle === 'annual' ? 'text-forest font-bold' : 'text-gray-500'}>
+            <span className={billingCycle === 'annual' ? 'text-forest dark:text-white font-bold' : 'text-gray-500 dark:text-dark-muted'}>
               {isEn ? 'Annual commitment' : 'Facturation annuelle'}{' '}
               <span className="text-[#e35d25] font-extrabold">(-15%)</span>
             </span>
@@ -299,7 +299,7 @@ export const PricingPage: React.FC = () => {
       {/* =========================================================
           2. PRICING CARDS (Starter, Growth, Pro)
       ========================================================= */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-dark-page transition-colors duration-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
             {plans.map((p) => (
@@ -308,7 +308,7 @@ export const PricingPage: React.FC = () => {
                 className={`rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 relative ${
                   p.popular
                     ? 'bg-forest text-white border-2 border-gold shadow-2xl md:-translate-y-3'
-                    : 'bg-[#FAF8F5] border border-gray-200/90 shadow-sm hover:shadow-lg'
+                    : 'bg-[#FAF8F5] dark:bg-dark-card border border-gray-200/90 dark:border-dark-border shadow-sm hover:shadow-lg dark:shadow-none'
                 }`}
               >
                 {p.popular && (
@@ -319,22 +319,22 @@ export const PricingPage: React.FC = () => {
 
                 <div>
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className={`font-bold text-2xl font-display ${p.popular ? 'text-white' : 'text-forest'}`}>
+                    <h3 className={`font-bold text-2xl font-display ${p.popular ? 'text-white' : 'text-forest dark:text-white'}`}>
                       {p.name}
                     </h3>
                     <Badge variant={p.popular ? 'gold' : 'neutral'}>{p.badge}</Badge>
                   </div>
 
                   <div className="mb-4">
-                    <span className={`text-4xl sm:text-5xl font-black font-display ${p.popular ? 'text-white' : 'text-forest'}`}>
+                    <span className={`text-4xl sm:text-5xl font-black font-display ${p.popular ? 'text-white' : 'text-forest dark:text-white'}`}>
                       {p.price}
                     </span>
-                    <span className={`text-sm font-medium ${p.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                    <span className={`text-sm font-medium ${p.popular ? 'text-white/70' : 'text-gray-500 dark:text-dark-muted'}`}>
                       {' '}{p.unit}
                     </span>
                   </div>
 
-                  <p className={`text-xs mb-8 leading-relaxed ${p.popular ? 'text-white/80' : 'text-ink-secondary'}`}>
+                  <p className={`text-xs mb-8 leading-relaxed ${p.popular ? 'text-white/80' : 'text-ink-secondary dark:text-dark-secondary'}`}>
                     {p.description}
                   </p>
 
@@ -342,7 +342,7 @@ export const PricingPage: React.FC = () => {
                     {p.features.map((feat, i) => (
                       <li key={i} className="flex items-start gap-2.5">
                         <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${p.popular ? 'text-gold' : 'text-emerald-600'}`} />
-                        <span className={p.popular ? 'text-white/95' : 'text-ink-main'}>{feat}</span>
+                        <span className={p.popular ? 'text-white/95' : 'text-ink-main dark:text-dark-text'}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -353,7 +353,7 @@ export const PricingPage: React.FC = () => {
                     className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 ${
                       p.popular
                         ? 'bg-[#e35d25] hover:bg-[#cf4f1a] text-white'
-                        : 'bg-white hover:bg-gray-100 text-forest border border-gray-200'
+                        : 'bg-white dark:bg-dark-surface hover:bg-gray-100 dark:hover:bg-dark-border text-forest dark:text-dark-text border border-gray-200 dark:border-dark-border'
                     }`}
                   >
                     <span>{p.cta}</span>
@@ -365,37 +365,37 @@ export const PricingPage: React.FC = () => {
           </div>
 
           {/* Modes de paiement disponibles au Maroc */}
-          <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#FAF8F5] border border-gray-200/90 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#FAF8F5] dark:bg-dark-card border border-gray-200/90 dark:border-dark-border flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
             <div className="space-y-2.5 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest/10 text-forest text-xs font-bold uppercase tracking-wider">
-                <ShieldCheck className="w-4 h-4 text-forest" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest/10 dark:bg-emerald-950/60 text-forest dark:text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-forest dark:text-emerald-300" />
                 <span>Modes de paiement disponibles au Maroc</span>
               </div>
-              <p className="text-xs sm:text-sm font-medium text-ink-main max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm font-medium text-ink-main dark:text-dark-secondary max-w-2xl leading-relaxed">
                 {isEn
                   ? "Pay for your subscription via domestic Moroccan bank transfer or local money transfer services, tailored to your restaurant accounting needs."
                   : "Payez votre abonnement par virement bancaire ou via les services de transfert d'argent disponibles au Maroc, selon les modalités proposées."}
               </p>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-forest shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-forest dark:text-dark-text shadow-xs">
                   Virement bancaire
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-[#E0311D] shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-[#E0311D] shadow-xs">
                   CIH Bank
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-[#D38800] shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-[#D38800] shadow-xs">
                   Attijariwafa bank
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-[#EA580C] shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-[#EA580C] shadow-xs">
                   Cash Plus
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-neutral-900 shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-neutral-900 dark:text-white shadow-xs">
                   Western Union
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-[#E0311D] shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-[#E0311D] shadow-xs">
                   MoneyGram
                 </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-[#F15A24] shadow-xs">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs font-bold text-[#F15A24] shadow-xs">
                   Ria
                 </span>
               </div>
@@ -416,17 +416,17 @@ export const PricingPage: React.FC = () => {
       {/* =========================================================
           3. INTERACTIVE 0% COMMISSION SAVINGS CALCULATOR
       ========================================================= */}
-      <section className="py-20 bg-[#FAF8F5] border-y border-gray-200/70">
+      <section className="py-20 bg-[#FAF8F5] dark:bg-dark-card/40 border-y border-gray-200/70 dark:border-dark-border transition-colors duration-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-gray-200 shadow-xl space-y-8">
+          <div className="bg-white dark:bg-dark-card rounded-3xl p-8 sm:p-12 border border-gray-200 dark:border-dark-border shadow-xl dark:shadow-none space-y-8 transition-colors duration-200">
             <div className="text-center space-y-2">
               <span className="text-xs font-bold text-[#e35d25] uppercase tracking-wider">
                 {isEn ? '0% Commission Impact' : 'Calculateur d’Économie Réelle'}
               </span>
-              <h2 className="text-3xl font-extrabold text-forest font-display">
+              <h2 className="text-3xl font-extrabold text-forest dark:text-white font-display">
                 {isEn ? 'How much do you save compared to delivery apps?' : 'Combien économisez-vous par rapport aux commissions classiques ?'}
               </h2>
-              <p className="text-xs text-ink-secondary max-w-lg mx-auto">
+              <p className="text-xs text-ink-secondary dark:text-dark-secondary max-w-lg mx-auto">
                 {isEn
                   ? 'Delivery apps take between 15% and 22% on every single order. See what happens when you switch to direct QR & WhatsApp ordering.'
                   : 'Les applications intermédiaires prélèvent en moyenne 18% sur chaque commande. Calculez votre gain net avec SOFRAFLOW.'}
@@ -434,8 +434,8 @@ export const PricingPage: React.FC = () => {
             </div>
 
             {/* Interactive Slider */}
-            <div className="space-y-3 bg-[#FAF8F5] p-6 rounded-2xl border border-gray-200">
-              <div className="flex justify-between items-center text-sm font-bold text-forest">
+            <div className="space-y-3 bg-[#FAF8F5] dark:bg-dark-surface p-6 rounded-2xl border border-gray-200 dark:border-dark-border transition-colors duration-200">
+              <div className="flex justify-between items-center text-sm font-bold text-forest dark:text-white">
                 <span>{isEn ? 'Your Monthly Order Turnover:' : 'Votre volume de commandes mensuel :'}</span>
                 <span className="text-xl text-[#e35d25] font-black">{monthlyVolume.toLocaleString()} MAD</span>
               </div>
@@ -446,9 +446,9 @@ export const PricingPage: React.FC = () => {
                 step="5000"
                 value={monthlyVolume}
                 onChange={(e) => setMonthlyVolume(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#e35d25]"
+                className="w-full h-2 bg-gray-200 dark:bg-dark-border rounded-lg appearance-none cursor-pointer accent-[#e35d25]"
               />
-              <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+              <div className="flex justify-between text-[10px] text-gray-400 dark:text-dark-muted font-mono">
                 <span>10 000 MAD</span>
                 <span>75 000 MAD</span>
                 <span>150 000 MAD</span>
@@ -457,34 +457,34 @@ export const PricingPage: React.FC = () => {
 
             {/* Comparison Results */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-              <div className="p-4 rounded-2xl bg-red-50 border border-red-200">
-                <span className="text-[10px] uppercase font-bold text-red-700 block">
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50">
+                <span className="text-[10px] uppercase font-bold text-red-700 dark:text-red-400 block">
                   {isEn ? 'Third-Party Fees (18%)' : 'Commissions Applis (18%)'}
                 </span>
-                <span className="text-2xl font-black text-red-600 block mt-1">
+                <span className="text-2xl font-black text-red-600 dark:text-red-400 block mt-1">
                   -{deliveryAppCommission.toLocaleString()} MAD
                 </span>
-                <span className="text-[10px] text-red-500 block mt-0.5">{isEn ? 'Lost every month' : 'Perdus chaque mois'}</span>
+                <span className="text-[10px] text-red-500 dark:text-red-400/80 block mt-0.5">{isEn ? 'Lost every month' : 'Perdus chaque mois'}</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-forest/5 border border-forest/10">
-                <span className="text-[10px] uppercase font-bold text-forest block">
+              <div className="p-4 rounded-2xl bg-forest/5 dark:bg-emerald-950/30 border border-forest/10 dark:border-emerald-800/40">
+                <span className="text-[10px] uppercase font-bold text-forest dark:text-emerald-300 block">
                   {isEn ? 'SOFRAFLOW Growth' : 'Abonnement SOFRAFLOW'}
                 </span>
-                <span className="text-2xl font-black text-forest block mt-1">
+                <span className="text-2xl font-black text-forest dark:text-white block mt-1">
                   {sofraflowCost} MAD
                 </span>
-                <span className="text-[10px] text-gray-500 block mt-0.5">{isEn ? 'Flat predictable cost' : 'Coût fixe prévisible'}</span>
+                <span className="text-[10px] text-gray-500 dark:text-dark-muted block mt-0.5">{isEn ? 'Flat predictable cost' : 'Coût fixe prévisible'}</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 block">
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">
                   {isEn ? 'Net Monthly Savings' : 'Votre Économie Nette'}
                 </span>
-                <span className="text-2xl font-black text-emerald-600 block mt-1">
+                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block mt-1">
                   +{monthlySavings.toLocaleString()} MAD
                 </span>
-                <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold block mt-0.5">
                   {isEn ? 'In your bank account' : 'Dans votre trésorerie'}
                 </span>
               </div>
@@ -496,58 +496,58 @@ export const PricingPage: React.FC = () => {
       {/* =========================================================
           4. FULL FEATURE COMPARISON MATRIX TABLE
       ========================================================= */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-dark-page transition-colors duration-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-3">
             <span className="text-xs font-bold text-[#e35d25] uppercase tracking-wider">
               {isEn ? 'Full Comparison' : 'Matrice Comparative Complète'}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest font-display">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest dark:text-white font-display">
               {isEn ? 'Compare every feature in detail' : 'Comparez le détail de chaque formule'}
             </h2>
           </div>
 
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-md overflow-hidden">
+          <div className="bg-white dark:bg-dark-card rounded-3xl border border-gray-200 dark:border-dark-border shadow-md dark:shadow-none overflow-hidden transition-colors duration-200">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-[#FAF8F5]">
-                    <th className="py-4 px-6 font-bold text-forest w-1/2">
+                  <tr className="border-b border-gray-200 dark:border-dark-border bg-[#FAF8F5] dark:bg-dark-surface">
+                    <th className="py-4 px-6 font-bold text-forest dark:text-white w-1/2">
                       {isEn ? 'Features' : 'Fonctionnalités'}
                     </th>
-                    <th className="py-4 px-4 font-bold text-forest text-center w-1/6">Starter</th>
+                    <th className="py-4 px-4 font-bold text-forest dark:text-white text-center w-1/6">Starter</th>
                     <th className="py-4 px-4 font-extrabold text-white bg-forest text-center w-1/6">Growth</th>
-                    <th className="py-4 px-4 font-bold text-forest text-center w-1/6">Pro</th>
+                    <th className="py-4 px-4 font-bold text-forest dark:text-white text-center w-1/6">Pro</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
                   {matrixCategories.map((cat, cIdx) => (
                     <React.Fragment key={cIdx}>
-                      <tr className="bg-gray-100/70">
-                        <td colSpan={4} className="py-2.5 px-6 font-bold text-xs uppercase tracking-wider text-forest">
+                      <tr className="bg-gray-100/70 dark:bg-dark-surface/80">
+                        <td colSpan={4} className="py-2.5 px-6 font-bold text-xs uppercase tracking-wider text-forest dark:text-emerald-400">
                           {cat.category}
                         </td>
                       </tr>
                       {cat.rows.map((r, rIdx) => (
-                        <tr key={rIdx} className={rIdx % 2 === 1 ? 'bg-[#FAF8F5]/50' : ''}>
-                          <td className="py-3.5 px-6 font-medium text-ink-main">{r.name}</td>
-                          <td className="py-3.5 px-4 text-center">
+                        <tr key={rIdx} className={rIdx % 2 === 1 ? 'bg-[#FAF8F5]/50 dark:bg-dark-surface/30' : ''}>
+                          <td className="py-3.5 px-6 font-medium text-ink-main dark:text-dark-text">{r.name}</td>
+                          <td className="py-3.5 px-4 text-center text-ink-main dark:text-dark-text">
                             {typeof r.starter === 'boolean' ? (
-                              r.starter ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                              r.starter ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto" /> : <X className="w-4 h-4 text-gray-300 dark:text-dark-border mx-auto" />
                             ) : (
                               <span className="font-bold text-xs">{r.starter}</span>
                             )}
                           </td>
-                          <td className="py-3.5 px-4 text-center bg-forest/5 font-semibold text-emerald-700">
+                          <td className="py-3.5 px-4 text-center bg-forest/5 dark:bg-emerald-950/40 font-semibold text-emerald-700 dark:text-emerald-400">
                             {typeof r.growth === 'boolean' ? (
-                              r.growth ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                              r.growth ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto" /> : <X className="w-4 h-4 text-gray-300 dark:text-dark-border mx-auto" />
                             ) : (
                               <span className="font-bold text-xs">{r.growth}</span>
                             )}
                           </td>
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-3.5 px-4 text-center text-ink-main dark:text-dark-text">
                             {typeof r.pro === 'boolean' ? (
-                              r.pro ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                              r.pro ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mx-auto" /> : <X className="w-4 h-4 text-gray-300 dark:text-dark-border mx-auto" />
                             ) : (
                               <span className="font-bold text-xs">{r.pro}</span>
                             )}
@@ -566,13 +566,13 @@ export const PricingPage: React.FC = () => {
       {/* =========================================================
           5. PRICING FAQ ACCORDION
       ========================================================= */}
-      <section className="py-20 bg-[#FAF8F5] border-t border-gray-200/70">
+      <section className="py-20 bg-[#FAF8F5] dark:bg-dark-card/40 border-t border-gray-200/70 dark:border-dark-border transition-colors duration-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14 space-y-2">
             <span className="text-xs font-bold text-[#e35d25] uppercase tracking-wider">
               {isEn ? 'Questions on Billing?' : 'Facturation au Maroc'}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest font-display">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-forest dark:text-white font-display">
               {isEn ? 'Frequently Asked Questions' : 'Questions Fréquentes sur les Tarifs'}
             </h2>
           </div>
@@ -581,21 +581,21 @@ export const PricingPage: React.FC = () => {
             {pricingFaqs.map((faq, index) => (
               <div
                 key={index}
-                className="border border-gray-200 rounded-2xl p-5 bg-white transition-all shadow-xs"
+                className="border border-gray-200 dark:border-dark-border rounded-2xl p-5 bg-white dark:bg-dark-card transition-all shadow-xs"
               >
                 <button
                   onClick={() => toggleFaq(index)}
-                  className="w-full flex items-center justify-between text-left text-sm sm:text-base font-bold text-forest focus:outline-none"
+                  className="w-full flex items-center justify-between text-left text-sm sm:text-base font-bold text-forest dark:text-white focus:outline-none"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
-                      openFaq === index ? 'transform rotate-180 text-forest' : ''
+                    className={`w-5 h-5 text-gray-500 dark:text-dark-secondary transition-transform duration-200 flex-shrink-0 ${
+                      openFaq === index ? 'transform rotate-180 text-forest dark:text-orange-400' : ''
                     }`}
                   />
                 </button>
                 {openFaq === index && (
-                  <p className="mt-3 text-xs sm:text-sm text-ink-secondary leading-relaxed border-t border-gray-100 pt-3">
+                  <p className="mt-3 text-xs sm:text-sm text-ink-secondary dark:text-dark-secondary leading-relaxed border-t border-gray-100 dark:border-dark-border pt-3">
                     {faq.a}
                   </p>
                 )}

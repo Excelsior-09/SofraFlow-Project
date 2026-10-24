@@ -50,9 +50,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window === 'undefined' || !window.matchMedia) return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleMediaChange = (e: MediaQueryListEvent) => {
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if (theme === 'system') {
-        setResolvedTheme(e.matches ? 'dark' : 'light');
+        const matches = 'matches' in e ? e.matches : (e as any).matches;
+        setResolvedTheme(matches ? 'dark' : 'light');
       }
     };
 
@@ -62,8 +63,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setResolvedTheme(theme);
     }
 
-    mediaQuery.addEventListener('change', handleMediaChange);
-    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange as EventListener);
+    } else if ((mediaQuery as any).addListener) {
+      (mediaQuery as any).addListener(handleMediaChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange as EventListener);
+      } else if ((mediaQuery as any).removeListener) {
+        (mediaQuery as any).removeListener(handleMediaChange);
+      }
+    };
   }, [theme]);
 
   // Apply or remove .dark class based on resolvedTheme and route
