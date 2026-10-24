@@ -83,7 +83,12 @@ export const adminService = {
 
       // 4. Verified platform owner email matches
       const normalizedEmail = (currentUser.email || '').toLowerCase().trim();
-      const verifiedOwnerEmails = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'];
+      const verifiedOwnerEmails = [
+        'ziraouianas0417@gmail.com',
+        'zeraouiianass@gmail.com',
+        'admin@sofraflow.com',
+        'contact@sofraflow.com'
+      ];
       if (normalizedEmail && verifiedOwnerEmails.includes(normalizedEmail)) {
         return true;
       }
@@ -1428,7 +1433,7 @@ export const adminService = {
         reason: 'Super Admin credentials verified',
         clientIp: '196.113.88.14',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        actorEmail: 'zeraouiianass@gmail.com',
+        actorEmail: 'ziraouianas0417@gmail.com',
         createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString()
       },
       {

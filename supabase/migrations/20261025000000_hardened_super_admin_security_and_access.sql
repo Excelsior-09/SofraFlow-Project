@@ -13,7 +13,7 @@ BEGIN
   FOR v_owner_record IN 
     SELECT id, email, created_at 
     FROM auth.users 
-    WHERE email IN ('zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com')
+    WHERE lower(email) IN ('ziraouianas0417@gmail.com', 'zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com')
   LOOP
     -- Insert into platform_super_admins if not already present
     INSERT INTO public.platform_super_admins (
@@ -59,6 +59,42 @@ BEGIN
         updated_at = now();
   END LOOP;
 END $$;
+
+-- 1b. TRUSTED SERVER FUNCTION TO VERIFY SUPER ADMIN STATUS
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_user_email text;
+BEGIN
+  -- 1. Check verified registry
+  IF EXISTS (
+    SELECT 1 FROM public.platform_super_admins
+    WHERE user_id = auth.uid() AND is_active = true
+  ) THEN
+    RETURN true;
+  END IF;
+
+  -- 2. Direct email check via jwt or auth.users
+  v_user_email := lower(trim(coalesce(auth.jwt() ->> 'email', '')));
+  IF v_user_email IN ('ziraouianas0417@gmail.com', 'zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com') THEN
+    RETURN true;
+  END IF;
+
+  -- 3. Check system roles
+  IF current_user IN ('postgres', 'service_role', 'supabase_admin') THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO anon, authenticated;
 
 -- 2. CREATE SECURITY EVENTS & IP MONITORING LEDGER
 -- Records admin access attempts, failed logins, probes, and rate-limit triggers.

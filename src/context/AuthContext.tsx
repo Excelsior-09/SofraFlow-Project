@@ -101,7 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const normalizedEmail = (authUserEmail || '').toLowerCase().trim();
-      const isKnownSuperAdmin = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(normalizedEmail);
+      const isKnownSuperAdmin = [
+        'ziraouianas0417@gmail.com',
+        'zeraouiianass@gmail.com',
+        'admin@sofraflow.com',
+        'contact@sofraflow.com'
+      ].includes(normalizedEmail);
 
       let metaPhone = '';
       if (!prof) {
@@ -251,7 +256,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Set user object to unblock routing
           const sessionEmailNorm = (session.user.email || '').toLowerCase().trim();
-          const isKnownAdmin = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(sessionEmailNorm);
+          const isKnownAdmin = [
+            'ziraouianas0417@gmail.com',
+            'zeraouiianass@gmail.com',
+            'admin@sofraflow.com',
+            'contact@sofraflow.com'
+          ].includes(sessionEmailNorm);
 
           setUser({
             id: session.user.id,
@@ -304,7 +314,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           if (session?.user) {
             const authEmailNorm = (session.user.email || '').toLowerCase().trim();
-            const isAdminEvt = ['zeraouiianass@gmail.com', 'admin@sofraflow.com', 'contact@sofraflow.com'].includes(authEmailNorm);
+            const isAdminEvt = [
+              'ziraouianas0417@gmail.com',
+              'zeraouiianass@gmail.com',
+              'admin@sofraflow.com',
+              'contact@sofraflow.com'
+            ].includes(authEmailNorm);
 
             setUser(prev => ({
               id: session.user.id,

@@ -602,10 +602,10 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
   });
 
   describe('8. Zero-Trust Access Ledger, Owner Provisioning & Rate Limiting Tests', () => {
-    it('recognizes legitimate platform owner email zeraouiianass@gmail.com as Super Admin', async () => {
+    it('recognizes legitimate platform owner email ziraouianas0417@gmail.com as Super Admin', async () => {
       const mockOwnerUser = {
         id: '4f12fdc4-9c1b-4413-815a-cb51a9149f3b',
-        email: 'zeraouiianass@gmail.com'
+        email: 'ziraouianas0417@gmail.com'
       };
 
       vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
@@ -650,7 +650,7 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
         outcome: 'allowed',
         reason: 'Super Admin credentials verified',
         clientIp: '196.113.88.14',
-        actorEmail: 'zeraouiianass@gmail.com'
+        actorEmail: 'ziraouianas0417@gmail.com'
       });
 
       expect(logged).toBe(true);
@@ -659,7 +659,7 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
         expect.objectContaining({
           p_event_type: 'admin_login_success',
           p_outcome: 'allowed',
-          p_actor_email: 'zeraouiianass@gmail.com'
+          p_actor_email: 'ziraouianas0417@gmail.com'
         })
       );
     });
