@@ -195,6 +195,18 @@ describe('User Profile Management — Requirements & Logic', () => {
   });
 
   describe('3. Local DB Fallback Operations', () => {
+    beforeEach(() => {
+      db.resetToSeed();
+      db.setCurrentUser({
+        id: 'usr_sarah_01',
+        email: 'sara@example.com',
+        fullName: 'Sara Initial',
+        phone: '+212611223344',
+        restaurantId: 'rest_test',
+        role: 'owner'
+      });
+    });
+
     it('updates user profile and normalizes phone number', () => {
       const initialUser = db.getCurrentUser();
       expect(initialUser).not.toBeNull();

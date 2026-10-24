@@ -149,6 +149,39 @@ describe('Production Authentication, MFA, Tenant Security & Order Integrity', ()
   // TEST GROUP D: Tenant Isolation & Privilege Escalation Prevention
   // -------------------------------------------------------------------------
   describe('Group D: Multi-Tenant Isolation & Role Enforcement', () => {
+    beforeEach(() => {
+      db.resetToSeed();
+      db.createMenu({
+        restaurantId: 'rest_marrakech_01',
+        name: 'Marrakech Seasonal Menu',
+        description: 'Traditional flavours',
+        slug: 'marrakech-main',
+        status: 'published',
+        categoryIds: [],
+        productIds: [],
+        enabledLanguages: ['fr', 'en', 'ar'],
+        isDefault: true
+      });
+      db.createOrder({
+        id: 'ord_mfa_test_01',
+        restaurantId: 'rest_marrakech_01',
+        orderType: 'dine_in',
+        tableNumber: '2',
+        items: [],
+        subtotal: 120,
+        taxAmount: 12,
+        serviceFeeAmount: 0,
+        total: 132,
+        currency: 'MAD',
+        status: 'new',
+        notificationStatus: 'pending',
+        statusHistory: [{ status: 'new', timestamp: new Date().toISOString() }],
+        publicOrderReference: 'ORD-MFA-01',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    });
+
     it('strictly separates operational records between distinct restaurant tenants', () => {
       const restA = 'rest_marrakech_01';
       const restB = 'rest_casablanca_02';

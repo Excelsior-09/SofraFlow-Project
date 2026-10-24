@@ -156,6 +156,18 @@ describe('Moroccan Payment Methods Integration', () => {
   });
 
   describe('5. Database Payment Request Workflow & Subscription Activation', () => {
+    beforeEach(() => {
+      db.resetToSeed();
+      db.createRestaurant({
+        id: 'rest_marrakech_01',
+        ownerId: 'user_001',
+        name: 'Dar Zellige Marrakech',
+        slug: 'dar-zellige',
+        subscriptionPlan: 'starter',
+        subscriptionStatus: 'active'
+      });
+    });
+
     it('should create a payment request with status under_review', () => {
       const newReq = db.createPaymentRequest({
         restaurantId: 'rest_marrakech_01',

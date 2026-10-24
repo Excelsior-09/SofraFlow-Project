@@ -141,13 +141,23 @@ describe('Dashboard Recovery & Error Boundary System Tests', () => {
     expect(mapped.whatsappConfig.templateName).toBe('sofraflow_order_notification_v1');
   });
 
-  it('Local db fallback preserves seed restaurants for offline or newly connected databases', () => {
-    const rests = db.getRestaurants();
-    expect(rests.length).toBeGreaterThan(0);
-    const first = rests[0];
-    expect(first.settings).toBeDefined();
-    expect(first.settings.currency).toBe('MAD');
-    expect(first.whatsappConfig).toBeDefined();
-    expect(first.whatsappConfig.enabled).toBe(true);
+  it('Local db initializes cleanly and supports creating new tenant restaurants', () => {
+    // Initial state has no unowned dummy records
+    expect(db.getRestaurants().length).toBe(0);
+
+    const created = db.createRestaurant({
+      ownerId: 'usr_owner_test',
+      name: 'Dar Essalam',
+      slug: 'dar-essalam'
+    });
+    expect(created.id).toBeDefined();
+    expect(created.settings).toBeDefined();
+    expect(created.settings.currency).toBe('MAD');
+    expect(created.whatsappConfig).toBeDefined();
+    expect(created.whatsappConfig.enabled).toBe(true);
+
+    const owned = db.getRestaurants('usr_owner_test');
+    expect(owned.length).toBe(1);
+    expect(owned[0].name).toBe('Dar Essalam');
   });
 });

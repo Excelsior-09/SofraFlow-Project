@@ -124,9 +124,12 @@ describe('Zina AI Menu Creator & Smart QR Studio Suite', () => {
   });
 
   it('verifies destination target is general venue with table entered manually', () => {
-    const restaurant = db.getRestaurantById('rest_marrakech_01');
+    const restaurant = db.createRestaurant({
+      id: 'rest_qr_studio_01',
+      name: 'Riad Test',
+      slug: 'riad-test'
+    });
     expect(restaurant).toBeDefined();
-    if (!restaurant) return;
 
     const baseUrl = `https://sofraflow.com/m/${restaurant.slug}`;
     const selectedDestination = 'general';

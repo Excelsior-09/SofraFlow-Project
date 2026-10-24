@@ -187,6 +187,13 @@ describe('Theme State & Scoping System', () => {
   });
 
   it('persists theme preference to localStorage and updates user preferences in DB', () => {
+    db.setCurrentUser({
+      id: 'usr_test_theme',
+      email: 'owner@test.com',
+      fullName: 'Owner Test',
+      restaurantId: 'rest_test',
+      role: 'owner'
+    });
     const user = db.getCurrentUser();
     expect(user).toBeDefined();
 

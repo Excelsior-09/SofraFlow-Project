@@ -118,13 +118,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[Auth] getRestaurantsForOwner warning:', restErr);
       }
 
-      // If remote returned 0 or failed, fallback to local cache if present
-      let availableRestaurants = ownedRestaurants;
-      if (availableRestaurants.length === 0) {
-        const localList = db.getRestaurants();
-        if (localList.length > 0) {
-          availableRestaurants = localList;
-        }
+      // Enforce strict ownership: Only show restaurants genuinely belonging to this user
+      let availableRestaurants: Restaurant[] = [];
+      if (isSupabaseConfigured) {
+        availableRestaurants = ownedRestaurants;
+      } else {
+        availableRestaurants = db.getRestaurants(authUserId);
       }
 
       setAllRestaurants(availableRestaurants);
@@ -195,10 +194,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mockUser = db.getCurrentUser();
         if (mockUser && mounted) {
           setUser(mockUser);
-          const rests = db.getRestaurants();
+          const rests = db.getRestaurants(mockUser.id);
           setAllRestaurants(rests);
           setActiveRestaurant(rests[0] || null);
           setIsDemoMode(true);
+        } else if (mounted) {
+          setUser(null);
+          setProfile(null);
+          setActiveRestaurant(null);
+          setAllRestaurants([]);
         }
         if (mounted) setIsLoading(false);
         return;
@@ -342,13 +346,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: `usr_${Date.now()}`,
         email,
         fullName: email.split('@')[0],
-        restaurantId: 'rest_marrakech_01',
+        restaurantId: '',
         role: 'owner'
       };
       db.setCurrentUser(mockUser);
       setUser(mockUser);
-      setAllRestaurants(db.getRestaurants());
-      setActiveRestaurant(db.getRestaurants()[0] || null);
+      const userRests = db.getRestaurants(mockUser.id);
+      setAllRestaurants(userRests);
+      setActiveRestaurant(userRests[0] || null);
       setIsDemoMode(true);
       return { success: true, mfaRequired: false };
     }
@@ -581,14 +586,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password?: string;
   }): Promise<Restaurant | null> => {
     if (!isSupabaseConfigured) {
+      const userId = `usr_${Date.now()}`;
       const newRest = db.createRestaurant({
+        ownerId: userId,
         name: params.restaurantName,
         slug: params.slug,
         phone: params.phone || '+212600000000',
         description: `Welcome to ${params.restaurantName}.`
       });
       const mockUser: User = {
-        id: `usr_${Date.now()}`,
+        id: userId,
         email: params.email,
         fullName: params.fullName,
         restaurantId: newRest.id,
@@ -677,6 +684,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Fallback: If remote creation threw or is not configured (e.g. table not yet in schema cache)
     const localCreated = db.createRestaurant({
+      ownerId: user.id,
       name: params.name,
       slug: params.slug,
       businessType: (params.businessType as any) || 'restaurant',
@@ -686,7 +694,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       description: params.description || `Welcome to ${params.name}.`
     });
 
-    const updatedList = db.getRestaurants();
+    const updatedList = isSupabaseConfigured
+      ? (await supabaseService.getRestaurantsForOwner(user.id).catch(() => [localCreated]))
+      : db.getRestaurants(user.id);
     setAllRestaurants(updatedList);
     setActiveRestaurant(localCreated);
     localStorage.setItem(ACTIVE_REST_KEY, localCreated.id);
@@ -1096,7 +1106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured) {
       const currentUser = db.getCurrentUser();
       setUser(currentUser);
-      const rests = db.getRestaurants();
+      const rests = currentUser ? db.getRestaurants(currentUser.id) : [];
       setAllRestaurants(rests);
       setActiveRestaurant(rests[0] || null);
       return;
@@ -1110,6 +1120,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session.user.user_metadata?.full_name
       );
       await loadMfaStatus();
+    } else {
+      setUser(null);
+      setProfile(null);
+      setActiveRestaurant(null);
+      setAllRestaurants([]);
+      localStorage.removeItem(ACTIVE_REST_KEY);
     }
   };
 

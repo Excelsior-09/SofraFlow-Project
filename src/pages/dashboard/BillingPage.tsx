@@ -164,6 +164,10 @@ export const BillingPage: React.FC = () => {
   // Receipt viewer modal
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
 
+  // Real business stats for active subscription
+  const [publishedMenusCount, setPublishedMenusCount] = useState<number>(0);
+  const [productsCount, setProductsCount] = useState<number>(0);
+
   // Set default plan to current restaurant plan if active
   useEffect(() => {
     if (activeRestaurant?.subscriptionPlan && activeRestaurant.subscriptionPlan !== 'enterprise') {
@@ -171,7 +175,7 @@ export const BillingPage: React.FC = () => {
     }
   }, [activeRestaurant?.subscriptionPlan]);
 
-  // Load payment requests for this restaurant
+  // Load payment requests and stats for this restaurant
   const loadRequests = async () => {
     if (!activeRestaurant) return;
     setIsLoadingRequests(true);
@@ -189,6 +193,30 @@ export const BillingPage: React.FC = () => {
       setPaymentRequests(local);
     } finally {
       setIsLoadingRequests(false);
+    }
+  };
+
+  const loadRestaurantStats = async () => {
+    if (!activeRestaurant) {
+      setPublishedMenusCount(0);
+      setProductsCount(0);
+      return;
+    }
+    try {
+      if (isSupabaseConfigured) {
+        const [menus, prods] = await Promise.all([
+          supabaseService.getMenusForRestaurant(activeRestaurant.id).catch(() => []),
+          supabaseService.getProductsForRestaurant(activeRestaurant.id).catch(() => [])
+        ]);
+        setPublishedMenusCount(menus.filter(m => m.status === 'published').length);
+        setProductsCount(prods.length);
+      } else {
+        setPublishedMenusCount(db.getMenus(activeRestaurant.id).filter(m => m.status === 'published').length);
+        setProductsCount(db.getProducts(activeRestaurant.id).length);
+      }
+    } catch {
+      setPublishedMenusCount(db.getMenus(activeRestaurant.id).filter(m => m.status === 'published').length);
+      setProductsCount(db.getProducts(activeRestaurant.id).length);
     }
   };
 
@@ -210,6 +238,7 @@ export const BillingPage: React.FC = () => {
 
   useEffect(() => {
     loadRequests();
+    loadRestaurantStats();
     if (showAdminSection) {
       loadAdminRequests();
     }
@@ -506,7 +535,7 @@ export const BillingPage: React.FC = () => {
                 <div>
                   <span className="text-ink-secondary dark:text-dark-muted block text-[11px]">Menus publiés</span>
                   <span className="font-extrabold text-sm text-forest dark:text-dark-text">
-                    {db.getMenus(activeRestaurant.id).filter(m => m.status === 'published').length} / Illimité
+                    {publishedMenusCount} / Illimité
                   </span>
                 </div>
                 <BadgeCheck className="w-5 h-5 text-forest dark:text-gold" />
@@ -516,7 +545,7 @@ export const BillingPage: React.FC = () => {
                 <div>
                   <span className="text-ink-secondary dark:text-dark-muted block text-[11px]">Plats au catalogue</span>
                   <span className="font-extrabold text-sm text-forest dark:text-dark-text">
-                    {db.getProducts(activeRestaurant.id).length} plats enregistrés
+                    {productsCount} plats enregistrés
                   </span>
                 </div>
                 <BadgeCheck className="w-5 h-5 text-forest dark:text-gold" />

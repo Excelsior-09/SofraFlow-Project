@@ -7,28 +7,47 @@ import { NoActiveRestaurantCard } from '../../components/common/NoActiveRestaura
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/db';
+import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { Product } from '../../types';
 
 export const LanguagesPage: React.FC = () => {
   const { activeRestaurant } = useAuth();
   const { language, t } = useLanguage();
   const isEn = language === 'en';
-  const [products, setProducts] = useState<Product[]>(() =>
-    activeRestaurant ? db.getProducts(activeRestaurant.id) : []
-  );
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  useEffect(() => {
-    if (activeRestaurant) {
+  const loadProducts = async () => {
+    if (!activeRestaurant) {
+      setProducts([]);
+      return;
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const remoteProds = await supabaseService.getProductsForRestaurant(activeRestaurant.id);
+        setProducts(remoteProds);
+        if (remoteProds.length > 0 && !selectedProductId) {
+          setSelectedProductId(remoteProds[0].id);
+        }
+      } catch (e) {
+        console.warn('[LanguagesPage] Supabase error:', e);
+        setProducts([]);
+      }
+    } else {
       const prods = db.getProducts(activeRestaurant.id);
       setProducts(prods);
       if (prods.length > 0 && !selectedProductId) {
         setSelectedProductId(prods[0].id);
       }
-    } else {
-      setProducts([]);
     }
+  };
+
+  useEffect(() => {
+    loadProducts();
+    const unsub = db.subscribe(loadProducts);
+    return () => unsub();
   }, [activeRestaurant]);
 
   if (!activeRestaurant) {
@@ -49,8 +68,8 @@ export const LanguagesPage: React.FC = () => {
 
   const currentProduct = products.find(p => p.id === selectedProductId) || products[0];
 
-  const handleUpdateCurrentProduct = (field: 'name' | 'description', lang: 'en' | 'fr' | 'ar', value: string) => {
-    if (!currentProduct) return;
+  const handleUpdateCurrentProduct = async (field: 'name' | 'description', lang: 'en' | 'fr' | 'ar', value: string) => {
+    if (!currentProduct || !activeRestaurant) return;
     const updated: Product = {
       ...currentProduct,
       [field]: {
@@ -58,8 +77,15 @@ export const LanguagesPage: React.FC = () => {
         [lang]: value
       }
     };
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateProduct(activeRestaurant.id, updated);
+      } catch (err) {
+        console.warn('[LanguagesPage] Remote update product warning:', err);
+      }
+    }
     db.updateProduct(updated);
-    setProducts(db.getProducts(activeRestaurant.id));
+    setProducts(prev => prev.map(p => (p.id === updated.id ? updated : p)));
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
   };
