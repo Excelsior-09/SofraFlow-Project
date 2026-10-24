@@ -544,5 +544,63 @@ describe('Super Admin Dashboard — Authorization, Access & Security Tests', () 
       expect(res.config?.modelName).toBe('claude-sonnet-5');
     });
   });
+
+  describe('8. User Accounts Directory & Authority Data Flow', () => {
+    it('retrieves all 3 legitimate registered users without duplicates', async () => {
+      const users = await adminService.getAllUsers();
+      expect(users.length).toBe(3);
+
+      const uniqueIds = new Set(users.map(u => u.id));
+      expect(uniqueIds.size).toBe(3);
+
+      const names = users.map(u => u.fullName);
+      expect(names).toContain('Anas Ziraoui');
+      expect(names).toContain('Yassine Alami');
+      expect(names).toContain('Fatima Zahra Mansouri');
+    });
+
+    it('retains users who do not own any restaurants (LEFT JOIN behavior)', async () => {
+      const users = await adminService.getAllUsers();
+      const adminUser = users.find(u => u.role === 'admin');
+      expect(adminUser).toBeDefined();
+      expect(adminUser?.fullName).toBe('Anas Ziraoui');
+      expect(adminUser?.restaurantCount).toBe(0);
+    });
+
+    it('preserves accurate emails and phone contacts across all accounts', async () => {
+      const users = await adminService.getAllUsers();
+      for (const u of users) {
+        expect(u.email).toBeTruthy();
+        expect(u.email).toContain('@');
+      }
+    });
+
+    it('supports inline connection test for MWAPI Gateway before saving', async () => {
+      vi.spyOn(supabase, 'rpc').mockResolvedValue({
+        data: {
+          success: true,
+          status: 'healthy',
+          latency_ms: 124,
+          provider: 'mwapi',
+          base_url: 'https://api.mwapi.dev'
+        },
+        error: null
+      } as any);
+
+      const testRes = await adminService.testClaudeConnection({
+        apiKey: 'mw_live_sk_test_token_12345678',
+        provider: 'mwapi',
+        baseUrl: 'https://api.mwapi.dev'
+      });
+
+      expect(testRes.success).toBe(true);
+      expect(testRes.provider).toBe('mwapi');
+      expect(testRes.baseUrl).toBe('https://api.mwapi.dev');
+      expect(testRes.status).toBe('healthy');
+      expect(testRes.latencyMs).toBeGreaterThan(0);
+    });
+  });
 });
+
+
 

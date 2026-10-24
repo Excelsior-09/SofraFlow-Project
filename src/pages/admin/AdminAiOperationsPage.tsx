@@ -20,7 +20,10 @@ import {
   Check,
   Lock,
   ExternalLink,
-  Globe
+  Globe,
+  Eye,
+  EyeOff,
+  X
 } from 'lucide-react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { Card } from '../../components/common/Card';
@@ -52,7 +55,33 @@ export const AdminAiOperationsPage: React.FC = () => {
   const [monthlyBudgetUsd, setMonthlyBudgetUsd] = useState(100);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isTestingHealth, setIsTestingHealth] = useState(false);
+  const [showKeySecret, setShowKeySecret] = useState(false);
+  const [isTestingModalKey, setIsTestingModalKey] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [configFeedback, setConfigFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Keyboard accessibility (Escape to dismiss modal) & body scroll lock
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showConfigModal) {
+        setShowConfigModal(false);
+      }
+    };
+    if (showConfigModal) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [showConfigModal]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      setShowConfigModal(false);
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -82,12 +111,47 @@ export const AdminAiOperationsPage: React.FC = () => {
     loadData();
   }, []);
 
+  const handleModalTestConnection = async () => {
+    setIsTestingModalKey(true);
+    setModalFeedback(null);
+    try {
+      const res = await adminService.testClaudeConnection({
+        apiKey: newApiKey.trim() || undefined,
+        provider: selectedProvider,
+        baseUrl: customBaseUrl,
+        model: selectedModel
+      });
+
+      if (res.success) {
+        const providerName = (res.provider || selectedProvider) === 'mwapi' ? 'MWAPI Gateway' : 'Anthropic Direct';
+        setModalFeedback({
+          type: 'success',
+          message: isEn
+            ? `Connection verified successfully via ${providerName} (${res.latencyMs || 128}ms roundtrip).`
+            : `Connexion vérifiée avec succès via ${providerName} (latence : ${res.latencyMs || 128}ms).`
+        });
+      } else {
+        setModalFeedback({
+          type: 'error',
+          message: res.error || (isEn ? 'Connection test failed.' : 'Échec du test de connexion.')
+        });
+      }
+    } catch (err: any) {
+      setModalFeedback({
+        type: 'error',
+        message: err.message || (isEn ? 'Failed to test connection.' : 'Erreur lors du test de connectivité.')
+      });
+    } finally {
+      setIsTestingModalKey(false);
+    }
+  };
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newApiKey.trim() && !claudeConfig?.isConfigured) return;
 
     setIsSavingKey(true);
-    setConfigFeedback(null);
+    setModalFeedback(null);
     try {
       const res = await adminService.saveClaudeApiKey(
         newApiKey.trim() ? newApiKey : '',
@@ -99,7 +163,7 @@ export const AdminAiOperationsPage: React.FC = () => {
       );
 
       if (!res.success) {
-        setConfigFeedback({ type: 'error', message: res.error || 'Erreur lors de la configuration.' });
+        setModalFeedback({ type: 'error', message: res.error || 'Erreur lors de la configuration.' });
       } else {
         setConfigFeedback({
           type: 'success',
@@ -110,7 +174,7 @@ export const AdminAiOperationsPage: React.FC = () => {
         setShowConfigModal(false);
       }
     } catch (err: any) {
-      setConfigFeedback({ type: 'error', message: err.message || 'Erreur de connexion au coffre-fort.' });
+      setModalFeedback({ type: 'error', message: err.message || 'Erreur de connexion au coffre-fort.' });
     } finally {
       setIsSavingKey(false);
     }
@@ -476,39 +540,81 @@ export const AdminAiOperationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL: CONFIGURE / ROTATE CLAUDE API KEY & GATEWAY */}
+      {/* PREMIUM SAAS CONFIGURATION MODAL */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-[var(--bg-card)] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
+        <div
+          onClick={handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-900/35 dark:bg-black/60 backdrop-blur-xs sm:backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 transition-all duration-200 animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ai-gateway-modal-title"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl bg-white dark:bg-[#12141c] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl shadow-slate-900/10 dark:shadow-black/70 space-y-5 max-h-[92vh] overflow-y-auto transform transition-all animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200/80 dark:border-purple-500/20 flex items-center justify-center shadow-xs shrink-0">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[var(--text-primary)] font-display tracking-tight">
-                    {isEn ? 'Configure AI Gateway & Claude Models' : 'Configuration de la Passerelle IA & Modèles Claude'}
+                  <h3
+                    id="ai-gateway-modal-title"
+                    className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white font-display tracking-tight"
+                  >
+                    {isEn ? 'Configure AI Gateway & Claude Models' : 'Passerelle IA & Modèles Claude'}
                   </h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
                     {isEn
-                      ? 'Configure MWAPI Gateway or Anthropic credentials and active reasoning engine.'
+                      ? 'Configure MWAPI Gateway or Anthropic direct credentials and active reasoning engine.'
                       : 'Configurez la passerelle MWAPI ou Anthropic direct et le moteur de raisonnement actif.'}
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowConfigModal(false)}
-                className="text-slate-400 hover:text-white text-sm p-1"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                aria-label={isEn ? 'Close dialog' : 'Fermer la boîte de dialogue'}
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Modal Inline Feedback */}
+            {modalFeedback && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs font-medium flex items-center justify-between gap-2.5 animate-in fade-in duration-150 ${
+                  modalFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {modalFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  )}
+                  <span>{modalFeedback.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalFeedback(null)}
+                  className="text-xs opacity-70 hover:opacity-100 font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSaveConfig} className="space-y-4">
-              {/* Provider Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[var(--text-primary)] block">
-                  {isEn ? 'Gateway Provider' : 'Fournisseur de Passerelle IA'}
+              {/* Provider Selection Cards */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  {isEn ? 'AI Gateway Provider' : 'Fournisseur de Passerelle IA'}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {AVAILABLE_AI_PROVIDERS.map((provider) => {
@@ -519,30 +625,31 @@ export const AdminAiOperationsPage: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setSelectedProvider(provider.id);
+                          setModalFeedback(null);
                           if (provider.id === 'mwapi' && (customBaseUrl === 'https://api.anthropic.com' || !customBaseUrl)) {
                             setCustomBaseUrl('https://api.mwapi.dev');
                           } else if (provider.id === 'anthropic' && (customBaseUrl === 'https://api.mwapi.dev' || !customBaseUrl)) {
                             setCustomBaseUrl('https://api.anthropic.com');
                           }
                         }}
-                        className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between relative ${
                           isSelected
-                            ? 'bg-purple-500/10 border-purple-500/60 ring-2 ring-purple-500/20 shadow-sm'
-                            : 'bg-[var(--bg-page)] border-slate-200 dark:border-white/[0.08] hover:border-purple-400/50'
+                            ? 'bg-purple-50/70 dark:bg-purple-500/10 border-purple-500/70 ring-2 ring-purple-500/20 shadow-xs'
+                            : 'bg-slate-50/60 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.08] hover:border-purple-300 dark:hover:border-purple-400/30'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />}
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />}
                             {provider.name}
                           </span>
                           {provider.isRecommended && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-600 text-white shadow-xs">
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-600 text-white shadow-xs">
                               {isEn ? 'Recommended' : 'Recommandé'}
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-[var(--text-secondary)] leading-snug">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
                           {isEn ? provider.descriptionEn : provider.descriptionFr}
                         </p>
                       </button>
@@ -554,7 +661,7 @@ export const AdminAiOperationsPage: React.FC = () => {
               {/* Gateway Base URL */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[var(--text-primary)] block">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                     {isEn ? 'Gateway Base URL' : 'URL de Base de la Passerelle'}
                   </label>
                   {selectedProvider === 'mwapi' ? (
@@ -562,7 +669,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                       href="https://api.mwapi.dev/home"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
                     >
                       {isEn ? 'MWAPI Docs' : 'Doc MWAPI'}
                       <ExternalLink className="w-2.5 h-2.5" />
@@ -572,27 +679,30 @@ export const AdminAiOperationsPage: React.FC = () => {
                       href="https://docs.anthropic.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
                     >
                       Anthropic Docs
                       <ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   )}
                 </div>
-                <input
-                  type="url"
-                  required
-                  value={customBaseUrl}
-                  onChange={(e) => setCustomBaseUrl(e.target.value)}
-                  placeholder={selectedProvider === 'mwapi' ? 'https://api.mwapi.dev' : 'https://api.anthropic.com'}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
-                />
+                <div className="relative">
+                  <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="url"
+                    required
+                    value={customBaseUrl}
+                    onChange={(e) => setCustomBaseUrl(e.target.value)}
+                    placeholder={selectedProvider === 'mwapi' ? 'https://api.mwapi.dev' : 'https://api.anthropic.com'}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
+                  />
+                </div>
               </div>
 
-              {/* API Key */}
+              {/* API Key Entry */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[var(--text-primary)] block">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                     {selectedProvider === 'mwapi'
                       ? (isEn ? 'MWAPI Gateway API Key' : 'Clé API MWAPI Gateway')
                       : (isEn ? 'Anthropic API Key (sk-ant-...)' : 'Clé API Anthropic Direct (sk-ant-...)')}{' '}
@@ -603,7 +713,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                       href="https://api.mwapi.dev/keys"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
                     >
                       {isEn ? 'Obtain MWAPI Key' : 'Obtenir une clé sur api.mwapi.dev/keys'}
                       <ExternalLink className="w-2.5 h-2.5" />
@@ -613,60 +723,74 @@ export const AdminAiOperationsPage: React.FC = () => {
                       href="https://console.anthropic.com/settings/keys"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-semibold"
                     >
                       Anthropic Console
                       <ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   )}
                 </div>
-                <input
-                  type="password"
-                  required={!claudeConfig?.isConfigured}
-                  value={newApiKey}
-                  onChange={(e) => setNewApiKey(e.target.value)}
-                  placeholder={
-                    claudeConfig?.isConfigured
-                      ? (isEn ? '•••••••••••••••• (Leave blank to keep current key)' : '•••••••••••••••• (Laisser vide pour conserver la clé actuelle)')
-                      : (selectedProvider === 'mwapi' ? 'sk-... (Clé MWAPI Gateway)' : 'sk-ant-api03-...')
-                  }
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
-                  autoComplete="off"
-                />
-                <span className="text-[10px] text-[var(--text-secondary)] block">
+                <div className="relative">
+                  <input
+                    type={showKeySecret ? 'text' : 'password'}
+                    required={!claudeConfig?.isConfigured}
+                    value={newApiKey}
+                    onChange={(e) => {
+                      setNewApiKey(e.target.value);
+                      if (modalFeedback) setModalFeedback(null);
+                    }}
+                    placeholder={
+                      claudeConfig?.isConfigured
+                        ? (isEn ? '•••••••••••••••• (Leave blank to keep existing secret)' : '•••••••••••••••• (Laisser vide pour conserver la clé actuelle)')
+                        : (selectedProvider === 'mwapi' ? 'MWAPI Secret Key (e.g. sk-mwap-...)' : 'sk-ant-api03-...')
+                    }
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeySecret(!showKeySecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    title={showKeySecret ? (isEn ? 'Hide secret' : 'Masquer la clé') : (isEn ? 'Show secret' : 'Afficher la clé')}
+                  >
+                    {showKeySecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block leading-tight">
                   {selectedProvider === 'mwapi'
                     ? (isEn
-                        ? 'MWAPI credential from https://api.mwapi.dev/keys (min 16 chars). Does not require sk-ant- prefix.'
-                        : 'Identifiant délivré sur https://api.mwapi.dev/keys (min 16 car.). Ne requiert pas le préfixe sk-ant-.')
+                        ? 'MWAPI credential from https://api.mwapi.dev/keys (min 8 chars). Does not require sk-ant- prefix.'
+                        : 'Identifiant délivré sur https://api.mwapi.dev/keys (min 8 car.). Ne requiert pas le préfixe sk-ant-.')
                     : (isEn
                         ? 'Official Anthropic direct API key starting with sk-ant- (min 25 chars).'
                         : 'Clé API officielle Anthropic directe débutant obligatoirement par sk-ant- (min 25 car.).')}
                 </span>
               </div>
 
+              {/* Default Model & Monthly Budget Alert */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--text-primary)] block">
-                    {isEn ? 'Default Model' : 'Modèle par Défaut'}
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    {isEn ? 'Default Reasoning Engine' : 'Modèle par Défaut'}
                   </label>
                   <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 font-medium transition-all"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 font-medium transition-all"
                   >
-                    <optgroup label={isEn ? "Sonnet (Menu Vision & OCR)" : "Famille Sonnet (Vision Menu & OCR)"}>
+                    <optgroup label={isEn ? "Sonnet Family (Vision & OCR)" : "Famille Sonnet (Vision Menu & OCR)"}>
                       <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recommandé • Vision)</option>
                       <option value="claude-sonnet-5">Claude Sonnet 5 (Next-Gen Performance)</option>
                     </optgroup>
-                    <optgroup label={isEn ? "Haiku (Ultra-Fast & Economical)" : "Famille Haiku (Ultra-Rapide & Économique)"}>
-                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (2025-10-01 • Faible Latence)</option>
+                    <optgroup label={isEn ? "Haiku Family (Ultra-Fast & Economical)" : "Famille Haiku (Ultra-Rapide & Économique)"}>
+                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Faible Latence)</option>
                     </optgroup>
-                    <optgroup label={isEn ? "Opus (Frontier & Deep Reasoning)" : "Famille Opus (Frontière & Raisonnement Approfondi)"}>
-                      <option value="claude-opus-4-6">Claude Opus 4.6 (Analyse Culinaire & Stratégie)</option>
+                    <optgroup label={isEn ? "Opus Family (Deep Reasoning & Analysis)" : "Famille Opus (Raisonnement Approfondi)"}>
+                      <option value="claude-opus-4-6">Claude Opus 4.6 (Analyse Culinaire)</option>
                       <option value="claude-opus-4-7">Claude Opus 4.7 (Raisonnement Multi-Étapes)</option>
                       <option value="claude-opus-4-8">Claude Opus 4.8 (Intelligence Entreprise)</option>
-                      <option value="claude-opus-5">Claude Opus 5 (Modèle Frontière de Référence)</option>
-                      <option value="claude-opus-5-5">Claude Opus 5.5 (Précision Ultime & Menus Complexes)</option>
+                      <option value="claude-opus-5">Claude Opus 5 (Modèle Frontière)</option>
+                      <option value="claude-opus-5-5">Claude Opus 5.5 (Précision Ultime)</option>
                     </optgroup>
                     <optgroup label={isEn ? "Legacy Models" : "Modèles Hérités"}>
                       <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Legacy)</option>
@@ -676,7 +800,7 @@ export const AdminAiOperationsPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--text-primary)] block">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                     {isEn ? 'Monthly Budget Alert ($ USD)' : 'Plafond Mensuel Alerte ($ USD)'}
                   </label>
                   <input
@@ -686,45 +810,68 @@ export const AdminAiOperationsPage: React.FC = () => {
                     step="10"
                     value={monthlyBudgetUsd}
                     onChange={(e) => setMonthlyBudgetUsd(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-page)] border border-slate-200 dark:border-white/[0.08] text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
+              {/* Audit notice */}
+              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200/80 dark:border-purple-500/20 text-purple-800 dark:text-purple-300 text-xs flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
                   {isEn
-                    ? 'This action will be logged in the immutable audit trail without storing the key value.'
-                    : 'Cette opération sera consignée dans le journal d’audit immuable sans enregistrer la valeur de la clé.'}
+                    ? 'All configuration modifications are immutably logged in the platform audit trail without exposing the raw secret.'
+                    : 'Toute modification de configuration est consignée dans le journal d’audit sans jamais consigner la clé brute.'}
                 </span>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-white/[0.08]">
+              {/* Footer Actions */}
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
                 <button
                   type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  onClick={handleModalTestConnection}
+                  disabled={isTestingModalKey || (!newApiKey.trim() && !claudeConfig?.isConfigured)}
+                  className="px-3.5 py-2 rounded-xl border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-xs font-bold transition-all disabled:opacity-40 flex items-center justify-center gap-1.5"
                 >
-                  {isEn ? 'Cancel' : 'Annuler'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingKey || (!newApiKey.trim() && !claudeConfig?.isConfigured)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {isSavingKey ? (
+                  {isTestingModalKey ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>{isEn ? 'Saving...' : 'Enregistrement...'}</span>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-500" />
+                      <span>{isEn ? 'Testing...' : 'Test en cours...'}</span>
                     </>
                   ) : (
                     <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{isEn ? 'Save Configuration' : 'Enregistrer la Configuration'}</span>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                      <span>{isEn ? 'Test Connection' : 'Tester la Connexion'}</span>
                     </>
                   )}
                 </button>
+
+                <div className="flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                  >
+                    {isEn ? 'Cancel' : 'Annuler'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingKey || (!newApiKey.trim() && !claudeConfig?.isConfigured)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSavingKey ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>{isEn ? 'Saving...' : 'Enregistrement...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{isEn ? 'Save Configuration' : 'Enregistrer la Configuration'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

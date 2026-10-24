@@ -28,17 +28,25 @@ export const AdminUsersPage: React.FC = () => {
 
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<AdminUserRecord | null>(null);
 
   const loadUsers = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const data = await adminService.getAllUsers();
       setUsers(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AdminUsersPage] Error loading users:', err);
+      setErrorMessage(
+        err.message ||
+          (isEn
+            ? 'Failed to fetch platform accounts. Please check Super Admin privileges and database connectivity.'
+            : 'Impossible de récupérer la liste des utilisateurs. Vérifiez les privilèges Super Admin et la connectivité.')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -49,10 +57,13 @@ export const AdminUsersPage: React.FC = () => {
   }, []);
 
   const filteredUsers = users.filter(u => {
+    const term = searchTerm.toLowerCase().trim();
     const matchesSearch =
-      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.phone && u.phone.includes(searchTerm));
+      !term ||
+      u.fullName.toLowerCase().includes(term) ||
+      u.email.toLowerCase().includes(term) ||
+      (u.phone && u.phone.toLowerCase().includes(term)) ||
+      u.role.toLowerCase().includes(term);
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -66,16 +77,37 @@ export const AdminUsersPage: React.FC = () => {
           : 'Gestion des comptes, profils des gérants et établissements rattachés.'
       }
       actions={
-        <button
-          onClick={loadUsers}
-          disabled={isLoading}
-          className="p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-[var(--text-secondary)] hover:text-amber-500 bg-[var(--bg-card)] transition-colors"
-          title="Actualiser"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg bg-[var(--bg-card)] border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-[var(--text-secondary)]">
+            {isEn ? `${users.length} Registered Accounts` : `${users.length} Comptes Enregistrés`}
+          </span>
+          <button
+            onClick={loadUsers}
+            disabled={isLoading}
+            className="p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] text-[var(--text-secondary)] hover:text-amber-500 bg-[var(--bg-card)] transition-colors"
+            title="Actualiser"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       }
     >
+      {/* Error Alert with Retry */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadUsers}
+            className="px-3 py-1.5 rounded-lg bg-rose-500 text-white font-bold text-xs hover:bg-rose-600 transition-colors shrink-0"
+          >
+            {isEn ? 'Retry' : 'Réessayer'}
+          </button>
+        </div>
+      )}
+
       {/* Search and Filters Bar */}
       <div className="rounded-2xl p-4 bg-[var(--bg-card)] border border-slate-200/80 dark:border-white/[0.08]">
         <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
@@ -90,7 +122,12 @@ export const AdminUsersPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+              {isEn
+                ? `Showing ${filteredUsers.length} of ${users.length}`
+                : `Affichage de ${filteredUsers.length} sur ${users.length}`}
+            </span>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
