@@ -100,10 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[Auth] getProfile warning:', profErr);
       }
 
-      if (!prof && metaFullName) {
+      let metaPhone = '';
+      if (!prof) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          metaPhone = authData?.user?.user_metadata?.phone || '';
+        } catch {}
         prof = {
           id: authUserId,
-          fullName: metaFullName,
+          fullName: metaFullName || authUserEmail.split('@')[0],
+          phone: metaPhone,
           role: 'owner',
           preferredLanguage: 'fr'
         };
@@ -143,16 +149,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 4. Set unified user object
-      setUser({
+      setUser(prev => ({
         id: authUserId,
         email: authUserEmail,
-        fullName: prof?.fullName || metaFullName || authUserEmail.split('@')[0],
-        phone: prof?.phone || '',
-        avatarUrl: prof?.avatarUrl || '',
+        fullName: prof?.fullName || metaFullName || prev?.fullName || authUserEmail.split('@')[0],
+        phone: prof?.phone || metaPhone || prev?.phone || '',
+        avatarUrl: prof?.avatarUrl || prev?.avatarUrl || '',
         restaurantId: matched?.id || '',
-        role: prof?.role || 'owner',
-        preferredLanguage: (prof?.preferredLanguage as any) || 'fr'
-      });
+        role: prof?.role || prev?.role || 'owner',
+        preferredLanguage: (prof?.preferredLanguage as any) || prev?.preferredLanguage || 'fr'
+      }));
       setIsDemoMode(false);
     } catch (err) {
       console.error('[Auth] Error loading user data from Supabase:', err);
@@ -243,8 +249,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: session.user.id,
             email: session.user.email || '',
             fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            phone: session.user.user_metadata?.phone || '',
+            avatarUrl: '',
             restaurantId: '',
-            role: 'owner'
+            role: 'owner',
+            preferredLanguage: 'fr'
           });
           setIsLoading(false);
           clearTimeout(timeoutId);
@@ -290,8 +299,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: session.user.id,
               email: session.user.email || '',
               fullName: session.user.user_metadata?.full_name || prev?.fullName || session.user.email?.split('@')[0] || 'User',
+              phone: session.user.user_metadata?.phone || prev?.phone || '',
+              avatarUrl: prev?.avatarUrl || '',
               restaurantId: prev?.restaurantId || '',
-              role: prev?.role || 'owner'
+              role: prev?.role || 'owner',
+              preferredLanguage: prev?.preferredLanguage || 'fr'
             }));
             setIsLoading(false);
 

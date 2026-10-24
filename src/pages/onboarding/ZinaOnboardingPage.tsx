@@ -20,7 +20,9 @@ import {
   HelpCircle,
   Check,
   Building,
-  RefreshCw
+  RefreshCw,
+  X,
+  AlertCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Logo } from '../../components/common/Logo';
@@ -30,10 +32,11 @@ import { SEO } from '../../components/common/SEO';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { BusinessSector, ZinaOnboardingState } from '../../types';
+import { isValidPhoneNumber } from '../../utils/phoneValidation';
 
 export const ZinaOnboardingPage: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
-  const { isAuthenticated, user, createBusiness } = useAuth();
+  const { isAuthenticated, user, createBusiness, updateUserProfile } = useAuth();
   const isEn = language === 'en';
   const navigate = useNavigate();
   const hasCreatedBusinessRef = useRef(false);
@@ -59,6 +62,136 @@ export const ZinaOnboardingPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdBusinessRecord, setCreatedBusinessRecord] = useState<any>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Step 9 Inline Editing States
+  type EditableSection = 'restaurant' | 'manager' | 'location' | 'contact' | null;
+  const [editingSection, setEditingSection] = useState<EditableSection>(null);
+  const [sectionError, setSectionError] = useState<string | null>(null);
+
+  const [draftRestaurant, setDraftRestaurant] = useState<{
+    restaurantName: string;
+    businessType: BusinessSector;
+    customBusinessType: string;
+  }>({
+    restaurantName: '',
+    businessType: 'restaurant',
+    customBusinessType: ''
+  });
+
+  const [draftManager, setDraftManager] = useState<{
+    managerName: string;
+  }>({ managerName: '' });
+
+  const [draftLocation, setDraftLocation] = useState<{
+    city: string;
+    area: string;
+    street: string;
+  }>({ city: '', area: '', street: '' });
+
+  const [draftContact, setDraftContact] = useState<{
+    whatsappPhone: string;
+    businessEmail: string;
+  }>({ whatsappPhone: '', businessEmail: '' });
+
+  const startEditSection = (section: EditableSection) => {
+    setSectionError(null);
+    setValidationError(null);
+    if (section === 'restaurant') {
+      setDraftRestaurant({
+        restaurantName: formData.restaurantName,
+        businessType: formData.businessType,
+        customBusinessType: formData.customBusinessType || ''
+      });
+    } else if (section === 'manager') {
+      setDraftManager({
+        managerName: formData.managerName
+      });
+    } else if (section === 'location') {
+      setDraftLocation({
+        city: formData.city,
+        area: formData.area || '',
+        street: formData.street || ''
+      });
+    } else if (section === 'contact') {
+      setDraftContact({
+        whatsappPhone: formData.whatsappPhone,
+        businessEmail: formData.businessEmail || ''
+      });
+    }
+    setEditingSection(section);
+  };
+
+  const cancelEditSection = () => {
+    setEditingSection(null);
+    setSectionError(null);
+  };
+
+  const saveEditRestaurant = () => {
+    if (!draftRestaurant.restaurantName.trim()) {
+      setSectionError(isEn ? 'Please enter your establishment name.' : 'Veuillez saisir le nom de l’établissement.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      restaurantName: draftRestaurant.restaurantName.trim(),
+      businessType: draftRestaurant.businessType,
+      customBusinessType: draftRestaurant.customBusinessType.trim()
+    }));
+    setEditingSection(null);
+    setSectionError(null);
+  };
+
+  const saveEditManager = () => {
+    if (!draftManager.managerName.trim()) {
+      setSectionError(isEn ? 'Please enter your name.' : 'Veuillez indiquer votre prénom ou nom.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      managerName: draftManager.managerName.trim()
+    }));
+    setEditingSection(null);
+    setSectionError(null);
+  };
+
+  const saveEditLocation = () => {
+    if (!draftLocation.city.trim()) {
+      setSectionError(isEn ? 'Please enter the city.' : 'Veuillez indiquer la ville.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      city: draftLocation.city.trim(),
+      area: draftLocation.area.trim(),
+      street: draftLocation.street.trim()
+    }));
+    setEditingSection(null);
+    setSectionError(null);
+  };
+
+  const saveEditContact = () => {
+    const phone = draftContact.whatsappPhone.trim();
+    if (!phone) {
+      setSectionError(isEn ? 'Please provide a valid WhatsApp phone number.' : 'Veuillez indiquer un numéro WhatsApp valide.');
+      return;
+    }
+    if (!isValidPhoneNumber(phone)) {
+      setSectionError(isEn ? 'Invalid WhatsApp phone format (e.g. +212 600 000 000).' : 'Format de numéro WhatsApp invalide (ex. +212 600 000 000 ou 06 12 34 56 78).');
+      return;
+    }
+    const email = draftContact.businessEmail.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSectionError(isEn ? 'Please enter a valid establishment contact email address.' : 'Veuillez saisir une adresse e-mail de contact valide.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      whatsappPhone: phone,
+      businessEmail: email
+    }));
+    setEditingSection(null);
+    setSectionError(null);
+  };
 
   // Synchronize language selection
   useEffect(() => {
@@ -129,6 +262,14 @@ export const ZinaOnboardingPage: React.FC = () => {
 
     try {
       if (isAuthenticated && user) {
+        // Sync owner manager name if provided and modified
+        if (formData.managerName.trim() && formData.managerName.trim() !== user.fullName) {
+          try {
+            await updateUserProfile({ fullName: formData.managerName.trim() });
+          } catch (syncErr) {
+            console.warn('[ZinaOnboarding] Failed to sync owner profile name:', syncErr);
+          }
+        }
         // Safe slug generation
         const baseSlug = formData.restaurantName
           .normalize('NFD')
@@ -756,92 +897,431 @@ export const ZinaOnboardingPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="space-y-3 divide-y divide-border-subtle dark:divide-dark-border">
-                {/* Restaurant */}
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
-                      {t('zina.step9.restaurantCard')}
-                    </span>
-                    <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
-                      {formData.restaurantName || '—'}
-                    </p>
-                    <p className="text-ink-secondary dark:text-dark-muted capitalize">
-                      {businessSectors.find(s => s.id === formData.businessType)?.label || formData.businessType}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => jumpToStep(2)}
-                    className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>{t('zina.editStep')}</span>
-                  </button>
+              <div className="space-y-4 divide-y divide-border-subtle dark:divide-dark-border">
+                {/* 1. Restaurant Section */}
+                <div className="pt-2">
+                  {editingSection === 'restaurant' ? (
+                    <div className="p-3.5 rounded-2xl bg-orange-50/50 dark:bg-orange-950/20 border border-brand-orange/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-brand-orange uppercase tracking-wider flex items-center gap-1.5">
+                          <Store className="w-3.5 h-3.5" />
+                          {t('zina.step9.restaurantCard')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="text-ink-secondary dark:text-dark-muted hover:text-ink-main p-1"
+                          title={isEn ? "Cancel" : "Annuler"}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                          {isEn ? "Establishment Name" : "Nom de l'établissement"} *
+                        </label>
+                        <input
+                          type="text"
+                          value={draftRestaurant.restaurantName}
+                          onChange={(e) => setDraftRestaurant(prev => ({ ...prev, restaurantName: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-bold focus:ring-2 focus:ring-brand-orange"
+                          placeholder={isEn ? "e.g. Café Atlas Artisan" : "ex: Café Atlas Artisan"}
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                          {isEn ? "Activity Type" : "Type d'activité"}
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {businessSectors.map(s => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => setDraftRestaurant(prev => ({ ...prev, businessType: s.id }))}
+                              className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${
+                                draftRestaurant.businessType === s.id
+                                  ? 'bg-brand-orange text-white border-brand-orange shadow-sm'
+                                  : 'bg-white dark:bg-dark-card border-border-subtle dark:border-dark-border text-ink-main dark:text-dark-text hover:border-brand-orange/50'
+                              }`}
+                            >
+                              <span className="shrink-0">{s.icon}</span>
+                              <span className="truncate">{s.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {draftRestaurant.businessType === 'other' && (
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                            {isEn ? "Specify Sector" : "Précisez votre secteur"}
+                          </label>
+                          <input
+                            type="text"
+                            value={draftRestaurant.customBusinessType}
+                            onChange={(e) => setDraftRestaurant(prev => ({ ...prev, customBusinessType: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-medium focus:ring-2 focus:ring-brand-orange"
+                            placeholder={isEn ? "e.g. Food Truck, Ice Cream Parlor..." : "ex: Food Truck, Glacier..."}
+                          />
+                        </div>
+                      )}
+
+                      {sectionError && (
+                        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{sectionError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="px-3 py-1.5 rounded-xl border border-border-subtle dark:border-dark-border text-ink-secondary dark:text-dark-muted hover:bg-neutral-100 dark:hover:bg-dark-border text-xs font-bold"
+                        >
+                          {isEn ? "Cancel" : "Annuler"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEditRestaurant}
+                          className="px-4 py-1.5 rounded-xl bg-brand-orange hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{isEn ? "Save" : "Enregistrer"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
+                          {t('zina.step9.restaurantCard')}
+                        </span>
+                        <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
+                          {formData.restaurantName || '—'}
+                        </p>
+                        <p className="text-ink-secondary dark:text-dark-muted capitalize">
+                          {businessSectors.find(s => s.id === formData.businessType)?.label || formData.businessType}
+                          {formData.businessType === 'other' && formData.customBusinessType ? ` (${formData.customBusinessType})` : ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditSection('restaurant')}
+                        className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        title={isEn ? "Edit restaurant details" : "Modifier l'établissement"}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>{t('zina.editStep')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Manager */}
-                <div className="pt-3 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
-                      {t('zina.step9.managerCard')}
-                    </span>
-                    <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
-                      {formData.managerName || '—'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => jumpToStep(3)}
-                    className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>{t('zina.editStep')}</span>
-                  </button>
+                {/* 2. Manager Section */}
+                <div className="pt-3">
+                  {editingSection === 'manager' ? (
+                    <div className="p-3.5 rounded-2xl bg-orange-50/50 dark:bg-orange-950/20 border border-brand-orange/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-brand-orange uppercase tracking-wider flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5" />
+                          {t('zina.step9.managerCard')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="text-ink-secondary dark:text-dark-muted hover:text-ink-main p-1"
+                          title={isEn ? "Cancel" : "Annuler"}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                          {isEn ? "Owner / Manager Full Name" : "Nom & Prénom du Gérant / Propriétaire"} *
+                        </label>
+                        <input
+                          type="text"
+                          value={draftManager.managerName}
+                          onChange={(e) => setDraftManager({ managerName: e.target.value })}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-bold focus:ring-2 focus:ring-brand-orange"
+                          placeholder={isEn ? "e.g. Youssef Bennani" : "ex: Youssef Bennani"}
+                          autoFocus
+                        />
+                        <p className="text-[10px] text-ink-secondary dark:text-dark-muted mt-1">
+                          {isEn
+                            ? "This represents your personal account identity as establishment owner."
+                            : "Ceci représente votre identité personnelle en tant que propriétaire du compte."}
+                        </p>
+                      </div>
+
+                      {sectionError && (
+                        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{sectionError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="px-3 py-1.5 rounded-xl border border-border-subtle dark:border-dark-border text-ink-secondary dark:text-dark-muted hover:bg-neutral-100 dark:hover:bg-dark-border text-xs font-bold"
+                        >
+                          {isEn ? "Cancel" : "Annuler"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEditManager}
+                          className="px-4 py-1.5 rounded-xl bg-brand-orange hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{isEn ? "Save" : "Enregistrer"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
+                          {t('zina.step9.managerCard')}
+                        </span>
+                        <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
+                          {formData.managerName || '—'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditSection('manager')}
+                        className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        title={isEn ? "Edit manager name" : "Modifier le responsable"}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>{t('zina.editStep')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Location */}
-                <div className="pt-3 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
-                      {t('zina.step9.locationCard')}
-                    </span>
-                    <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
-                      {formData.city} {formData.area ? `(${formData.area})` : ''}
-                    </p>
-                    {formData.street && <p className="text-ink-secondary dark:text-dark-muted">{formData.street}</p>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => jumpToStep(5)}
-                    className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>{t('zina.editStep')}</span>
-                  </button>
+                {/* 3. Location Section */}
+                <div className="pt-3">
+                  {editingSection === 'location' ? (
+                    <div className="p-3.5 rounded-2xl bg-orange-50/50 dark:bg-orange-950/20 border border-brand-orange/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-brand-orange uppercase tracking-wider flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" />
+                          {t('zina.step9.locationCard')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="text-ink-secondary dark:text-dark-muted hover:text-ink-main p-1"
+                          title={isEn ? "Cancel" : "Annuler"}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                            {isEn ? "City" : "Ville"} *
+                          </label>
+                          <input
+                            type="text"
+                            value={draftLocation.city}
+                            onChange={(e) => setDraftLocation(prev => ({ ...prev, city: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-bold focus:ring-2 focus:ring-brand-orange"
+                            placeholder="Casablanca, Marrakech..."
+                            autoFocus
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                            {isEn ? "Neighborhood / Area" : "Quartier / Secteur"}
+                          </label>
+                          <input
+                            type="text"
+                            value={draftLocation.area}
+                            onChange={(e) => setDraftLocation(prev => ({ ...prev, area: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-medium focus:ring-2 focus:ring-brand-orange"
+                            placeholder="Maârif, Guéliz, Agdal..."
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                          {isEn ? "Street Address" : "Adresse / Rue"}
+                        </label>
+                        <input
+                          type="text"
+                          value={draftLocation.street}
+                          onChange={(e) => setDraftLocation(prev => ({ ...prev, street: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-medium focus:ring-2 focus:ring-brand-orange"
+                          placeholder="12 Rue de la Liberté"
+                        />
+                      </div>
+
+                      {sectionError && (
+                        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{sectionError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="px-3 py-1.5 rounded-xl border border-border-subtle dark:border-dark-border text-ink-secondary dark:text-dark-muted hover:bg-neutral-100 dark:hover:bg-dark-border text-xs font-bold"
+                        >
+                          {isEn ? "Cancel" : "Annuler"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEditLocation}
+                          className="px-4 py-1.5 rounded-xl bg-brand-orange hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{isEn ? "Save" : "Enregistrer"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
+                          {t('zina.step9.locationCard')}
+                        </span>
+                        <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
+                          {formData.city} {formData.area ? `(${formData.area})` : ''}
+                        </p>
+                        {formData.street && <p className="text-ink-secondary dark:text-dark-muted">{formData.street}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditSection('location')}
+                        className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        title={isEn ? "Edit location" : "Modifier l'adresse"}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>{t('zina.editStep')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Contact */}
-                <div className="pt-3 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
-                      {t('zina.step9.contactCard')}
-                    </span>
-                    <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
-                      WhatsApp: {formData.whatsappPhone || '—'}
-                    </p>
-                    {formData.businessEmail && (
-                      <p className="text-ink-secondary dark:text-dark-muted">{formData.businessEmail}</p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => jumpToStep(6)}
-                    className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>{t('zina.editStep')}</span>
-                  </button>
+                {/* 4. Contact Section */}
+                <div className="pt-3">
+                  {editingSection === 'contact' ? (
+                    <div className="p-3.5 rounded-2xl bg-orange-50/50 dark:bg-orange-950/20 border border-brand-orange/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-brand-orange uppercase tracking-wider flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5" />
+                          {t('zina.step9.contactCard')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="text-ink-secondary dark:text-dark-muted hover:text-ink-main p-1"
+                          title={isEn ? "Cancel" : "Annuler"}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted mb-1">
+                          {isEn ? "WhatsApp Phone Number (for order dispatch)" : "Numéro WhatsApp (transmission des commandes)"} *
+                        </label>
+                        <input
+                          type="tel"
+                          value={draftContact.whatsappPhone}
+                          onChange={(e) => setDraftContact(prev => ({ ...prev, whatsappPhone: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-bold focus:ring-2 focus:ring-brand-orange font-mono"
+                          placeholder="+212 600 000 000"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-bold text-ink-secondary dark:text-dark-muted">
+                            {isEn ? "Establishment Contact Email (Public)" : "E-mail de Contact de l'Établissement (Public)"}
+                          </label>
+                          <span className="text-[10px] text-brand-orange font-semibold">
+                            {isEn ? "Public Contact" : "Contact Public"}
+                          </span>
+                        </div>
+                        <input
+                          type="email"
+                          value={draftContact.businessEmail}
+                          onChange={(e) => setDraftContact(prev => ({ ...prev, businessEmail: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle dark:border-dark-border bg-white dark:bg-dark-card text-brand-navy dark:text-dark-text font-medium focus:ring-2 focus:ring-brand-orange"
+                          placeholder="contact@votre-restaurant.ma"
+                        />
+                        <p className="text-[10px] text-ink-secondary dark:text-dark-muted mt-1">
+                          {isEn
+                            ? "Note: This email is displayed on customer receipts and menus. It does not alter your personal account login email."
+                            : "Note : Cet e-mail est affiché sur les reçus clients et menus QR. Il ne modifie pas l'e-mail de connexion à votre compte personnel."}
+                        </p>
+                      </div>
+
+                      {sectionError && (
+                        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{sectionError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelEditSection}
+                          className="px-3 py-1.5 rounded-xl border border-border-subtle dark:border-dark-border text-ink-secondary dark:text-dark-muted hover:bg-neutral-100 dark:hover:bg-dark-border text-xs font-bold"
+                        >
+                          {isEn ? "Cancel" : "Annuler"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEditContact}
+                          className="px-4 py-1.5 rounded-xl bg-brand-orange hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{isEn ? "Save" : "Enregistrer"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-ink-secondary dark:text-dark-muted uppercase tracking-wider text-[10px]">
+                          {t('zina.step9.contactCard')}
+                        </span>
+                        <p className="font-bold text-brand-navy dark:text-dark-text text-sm">
+                          WhatsApp: {formData.whatsappPhone || '—'}
+                        </p>
+                        {formData.businessEmail && (
+                          <p className="text-ink-secondary dark:text-dark-muted">{formData.businessEmail}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditSection('contact')}
+                        className="p-1.5 rounded-lg text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-950/40 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        title={isEn ? "Edit contact details" : "Modifier les coordonnées"}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>{t('zina.editStep')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -45,7 +45,58 @@ export const supabaseService = {
       console.error('[Supabase] Error fetching profile:', error.message);
       return null;
     }
-    if (!data) return null;
+    if (!data) {
+      // Auto-provision profile row if user is authenticated in Supabase Auth
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user && authData.user.id === userId) {
+          const authName = authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || 'Owner';
+          const authPhone = authData.user.user_metadata?.phone || '';
+          const table = supabase.from('profiles');
+          if (typeof table.upsert === 'function') {
+            const { data: created, error: createErr } = await table
+              .upsert({
+                id: userId,
+                full_name: authName,
+                phone: authPhone || null,
+                role: 'owner',
+                preferred_language: 'fr',
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'id' })
+              .select()
+              .maybeSingle();
+
+            if (!createErr && created) {
+              return {
+                id: created.id,
+                fullName: created.full_name || authName,
+                phone: created.phone || authPhone,
+                avatarUrl: created.avatar_url || '',
+                role: created.role || 'owner',
+                preferredLanguage: created.preferred_language || 'fr',
+                createdAt: created.created_at,
+                updatedAt: created.updated_at
+              };
+            }
+          }
+
+          // Return resolved profile from authenticated auth metadata
+          return {
+            id: userId,
+            fullName: authName,
+            phone: authPhone,
+            avatarUrl: '',
+            role: 'owner',
+            preferredLanguage: 'fr',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        }
+      } catch (e) {
+        console.warn('[Supabase] Auto-provision profile warning:', e);
+      }
+      return null;
+    }
 
     return {
       id: data.id,
@@ -110,8 +161,41 @@ export const supabaseService = {
     if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
     if (updates.preferredLanguage !== undefined) payload.preferred_language = updates.preferredLanguage;
 
-    const { error } = await supabase
-      .from('profiles')
+    // Check if profile exists; insert if missing, update if present
+    const profileTable = supabase.from('profiles');
+    if (typeof profileTable.select === 'function') {
+      const { data: existing, error: checkErr } = await profileTable
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!existing && !checkErr) {
+        const insertPayload: Record<string, any> = {
+          id: userId,
+          full_name: updates.fullName?.trim() || 'Owner',
+          phone: cleanPhone || null,
+          avatar_url: updates.avatarUrl || null,
+          role: updates.role || 'owner',
+          preferred_language: updates.preferredLanguage || 'fr',
+          updated_at: new Date().toISOString()
+        };
+        const { error: insertErr } = await supabase
+          .from('profiles')
+          .insert(insertPayload);
+        if (insertErr) {
+          console.error('[Supabase] Error inserting profile:', insertErr.message);
+          if (insertErr.code === '23505' || insertErr.message?.includes('duplicate') || insertErr.message?.includes('idx_profiles_phone_unique')) {
+            const err: any = new Error('duplicate_phone_number');
+            err.code = '23505';
+            throw err;
+          }
+          throw insertErr;
+        }
+        return true;
+      }
+    }
+
+    const { error } = await profileTable
       .update(payload)
       .eq('id', userId);
 

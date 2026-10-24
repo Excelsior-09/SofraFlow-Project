@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react';
 import { Logo } from '../../components/common/Logo';
@@ -21,11 +21,27 @@ export const LoginPage: React.FC = () => {
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
   const [mfaCode, setMfaCode] = useState('');
 
-  const { login, verifyMfaChallenge } = useAuth();
+  const { login, verifyMfaChallenge, mfaRequired, logout } = useAuth();
   const { language } = useLanguage();
   const isEn = language === 'en';
   const navigate = useNavigate();
   const location = useLocation();
+
+  // If MFA is required in AuthContext (e.g. page refresh during challenge), enter MFA step
+  useEffect(() => {
+    if (mfaRequired) {
+      setStep('mfa');
+    }
+  }, [mfaRequired]);
+
+  const handleCancelMfa = async () => {
+    try {
+      await logout();
+    } catch {}
+    setStep('credentials');
+    setMfaCode('');
+    setError(null);
+  };
 
   // Validate and sanitize return destination to prevent open redirects (OWASP A01 / A05)
   const rawFrom = (location.state as any)?.from?.pathname;
@@ -297,11 +313,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setStep('credentials');
-                  setMfaCode('');
-                  setError(null);
-                }}
+                onClick={handleCancelMfa}
                 className="w-full py-2 text-xs text-[var(--text-secondary)] hover:text-brand-orange flex items-center justify-center gap-1.5 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />

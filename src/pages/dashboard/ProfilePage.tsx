@@ -4,6 +4,7 @@ import {
   Mail,
   Phone,
   Shield,
+  ShieldCheck,
   KeyRound,
   Lock,
   Eye,
@@ -15,18 +16,34 @@ import {
   Check,
   X,
   Calendar,
-  BadgeCheck
+  BadgeCheck,
+  QrCode,
+  Smartphone,
+  Copy
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Alert } from '../../components/common/Alert';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, MfaEnrollmentResult } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { validateFullName, isValidPhoneNumber } from '../../utils/phoneValidation';
+import { copyToClipboard } from '../../utils/clipboard';
 
 export const ProfilePage: React.FC = () => {
-  const { user, updateUserProfile, changePasswordWithVerification, reloadProfile, isLoading: authLoading } = useAuth();
+  const {
+    user,
+    updateUserProfile,
+    changePasswordWithVerification,
+    reloadProfile,
+    isLoading: authLoading,
+    mfaFactors,
+    mfaAssuranceLevel,
+    enrollMfa,
+    verifyMfaEnrollment,
+    unenrollMfa,
+    loadMfaStatus
+  } = useAuth();
   const { t, language } = useLanguage();
   const isEn = language === 'en';
 
@@ -48,6 +65,16 @@ export const ProfilePage: React.FC = () => {
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // Two-Factor Authentication (2FA / TOTP) State
+  const [isEnrollingMfa, setIsEnrollingMfa] = useState(false);
+  const [enrollmentData, setEnrollmentData] = useState<MfaEnrollmentResult | null>(null);
+  const [totpVerifyCode, setTotpVerifyCode] = useState('');
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [mfaSuccess, setMfaSuccess] = useState<string | null>(null);
+  const [isVerifyingEnrollment, setIsVerifyingEnrollment] = useState(false);
+  const [isUnenrolling, setIsUnenrolling] = useState(false);
+  const [isCopiedSecret, setIsCopiedSecret] = useState(false);
+
   // Profile refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -58,6 +85,11 @@ export const ProfilePage: React.FC = () => {
       setPhoneNumber(user.phone || '');
     }
   }, [user]);
+
+  // Load MFA status on mount
+  useEffect(() => {
+    loadMfaStatus();
+  }, [loadMfaStatus]);
 
   // Live password validation checks
   const hasMinLength = newPassword.length >= 8;
@@ -85,6 +117,68 @@ export const ProfilePage: React.FC = () => {
   };
 
   const strengthMeta = getStrengthMeta();
+
+  // MFA Handlers
+  const handleStartMfaEnrollment = async () => {
+    setMfaError(null);
+    setMfaSuccess(null);
+    setIsEnrollingMfa(true);
+    try {
+      const res = await enrollMfa();
+      setEnrollmentData(res);
+      setTotpVerifyCode('');
+    } catch (err: any) {
+      console.error('[ProfilePage] MFA enrollment failed:', err);
+      setMfaError(err.message || 'Impossible d’initier la configuration 2FA.');
+      setIsEnrollingMfa(false);
+    }
+  };
+
+  const handleConfirmMfaEnrollment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollmentData || totpVerifyCode.trim().length !== 6) return;
+
+    setIsVerifyingEnrollment(true);
+    setMfaError(null);
+    try {
+      await verifyMfaEnrollment(enrollmentData.id, totpVerifyCode.trim());
+      setMfaSuccess(isEn ? 'Two-factor authentication (2FA) successfully activated!' : 'Authentification à deux facteurs (2FA) activée avec succès !');
+      setIsEnrollingMfa(false);
+      setEnrollmentData(null);
+      setTotpVerifyCode('');
+    } catch (err: any) {
+      setMfaError(err.message || (isEn ? 'Invalid or expired 6-digit code. Please verify and try again.' : 'Code à 6 chiffres incorrect ou expiré. Veuillez vérifier votre saisie.'));
+    } finally {
+      setIsVerifyingEnrollment(false);
+    }
+  };
+
+  const handleUnenrollMfa = async (factorId: string) => {
+    if (!confirm(isEn ? 'Are you sure you want to disable two-factor authentication for your account?' : 'Voulez-vous vraiment désactiver l’authentification à deux facteurs pour votre compte ?')) {
+      return;
+    }
+
+    setIsUnenrolling(true);
+    setMfaError(null);
+    try {
+      await unenrollMfa(factorId);
+      setMfaSuccess(isEn ? 'Two-factor authentication has been disabled.' : 'L’authentification à deux facteurs a été désactivée.');
+    } catch (err: any) {
+      setMfaError(err.message || (isEn ? 'Failed to disable 2FA.' : 'Échec de la désactivation du 2FA.'));
+    } finally {
+      setIsUnenrolling(false);
+    }
+  };
+
+  const handleCopySecret = async (secret: string) => {
+    const ok = await copyToClipboard(secret);
+    if (ok) {
+      setIsCopiedSecret(true);
+      setTimeout(() => setIsCopiedSecret(false), 2500);
+    }
+  };
+
+  const hasMfa = mfaFactors.length > 0;
 
   // Handle Profile Update
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -294,6 +388,20 @@ export const ProfilePage: React.FC = () => {
                     </span>
                     <span className="font-medium text-ink-main dark:text-[#F0F4F2]">
                       {user?.phone || (isEn ? 'Not provided' : 'Non renseigné')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink-secondary dark:text-[#97A7A0] flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-forest dark:text-gold" />
+                      {isEn ? 'Two-Factor (2FA)' : 'Sécurité 2FA'}
+                    </span>
+                    <span className={`font-semibold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-full ${
+                      hasMfa
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                    }`}>
+                      {hasMfa ? (isEn ? 'Active' : 'Actif') : (isEn ? 'Not Set' : 'Non activé')}
                     </span>
                   </div>
 
@@ -601,6 +709,208 @@ export const ProfilePage: React.FC = () => {
                     </Button>
                   </div>
                 </form>
+              </Card>
+
+              {/* SECTION 3: Two-Factor Authentication (2FA / TOTP) */}
+              <Card className="p-6 space-y-4 border border-border-subtle dark:border-[#233831]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-subtle dark:border-[#233831]">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      hasMfa
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    }`}>
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-forest dark:text-[#F0F4F2] font-display flex items-center gap-2">
+                        <span>{isEn ? 'Two-Factor Authentication (2FA)' : 'Authentification à Deux Facteurs (2FA)'}</span>
+                      </h3>
+                      <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+                        {isEn
+                          ? 'Protect your personal login account with standard time-based one-time password (TOTP) apps.'
+                          : 'Protégez votre compte personnel avec une application d’authentification standard (TOTP).'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    {hasMfa ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{isEn ? 'Active (AAL2)' : 'Actif (AAL2)'}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>{isEn ? 'Not Configured' : 'Non activé'}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {mfaSuccess && (
+                  <Alert type="success" className="mb-2">
+                    {mfaSuccess}
+                  </Alert>
+                )}
+
+                {mfaError && (
+                  <Alert type="error" className="mb-2">
+                    {mfaError}
+                  </Alert>
+                )}
+
+                {/* Explanation text */}
+                <p className="text-xs text-ink-secondary dark:text-[#97A7A0] leading-relaxed">
+                  {isEn
+                    ? 'When 2FA is active, signing in requires your password and a 6-digit verification code generated by Google Authenticator, Microsoft Authenticator, Authy, or 1Password.'
+                    : 'Lorsque le 2FA est activé, toute nouvelle connexion nécessitera votre mot de passe et un code de sécurité à 6 chiffres généré par Google Authenticator, Microsoft Authenticator, Authy ou 1Password.'}
+                </p>
+
+                {/* MFA Active factors list */}
+                {hasMfa && (
+                  <div className="pt-3 border-t border-border-subtle dark:border-[#233831] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 text-xs text-forest dark:text-[#F0F4F2]">
+                      <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="font-bold">Application Authenticator (TOTP)</span>
+                      <span className="text-[11px] text-ink-secondary dark:text-[#97A7A0]">
+                        — {isEn ? 'Verified Factor' : 'Facteur vérifié'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleUnenrollMfa(mfaFactors[0].id)}
+                      disabled={isUnenrolling}
+                      className="px-3.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold transition-colors disabled:opacity-50"
+                    >
+                      {isUnenrolling ? (isEn ? 'Disabling...' : 'Désactivation...') : (isEn ? 'Disable 2FA' : 'Désactiver le 2FA')}
+                    </button>
+                  </div>
+                )}
+
+                {/* MFA Setup Initiation Button */}
+                {!hasMfa && !isEnrollingMfa && (
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={handleStartMfaEnrollment}
+                      leftIcon={<ShieldCheck className="w-4 h-4" />}
+                    >
+                      {isEn ? 'Enable Two-Factor Authentication' : 'Activer l’authentification à deux facteurs'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Active Enrollment Modal / Inline Box */}
+                {isEnrollingMfa && enrollmentData && (
+                  <div className="pt-4 border-t border-border-subtle dark:border-[#233831] space-y-4">
+                    <div className="p-4 rounded-2xl bg-ivory dark:bg-[#0C1814] border border-border-subtle dark:border-[#233831] space-y-4">
+                      <h4 className="font-bold text-xs sm:text-sm text-forest dark:text-[#F0F4F2]">
+                        {isEn
+                          ? '1. Scan this QR code with your authenticator app'
+                          : '1. Scannez ce QR Code avec votre application d’authentification'}
+                      </h4>
+                      <p className="text-xs text-ink-secondary dark:text-[#97A7A0]">
+                        {isEn
+                          ? 'Open Google Authenticator, Microsoft Authenticator, Authy, or 1Password and scan the image below:'
+                          : 'Ouvrez Google Authenticator, Microsoft Authenticator, Authy ou 1Password et scannez l’image ci-dessous :'}
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-6 pt-2">
+                        {enrollmentData.qrCode ? (
+                          <div className="p-3 bg-white rounded-2xl shadow-sm border border-neutral-200 inline-block">
+                            <img
+                              src={enrollmentData.qrCode}
+                              alt="MFA QR Code"
+                              className="w-44 h-44 object-contain rounded-lg"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-44 h-44 rounded-2xl bg-neutral-100 flex items-center justify-center text-xs text-neutral-500">
+                            <QrCode className="w-10 h-10" />
+                          </div>
+                        )}
+
+                        <div className="space-y-2 flex-1 w-full">
+                          <span className="text-[11px] font-bold text-ink-secondary dark:text-[#97A7A0] uppercase tracking-wider block">
+                            {isEn
+                              ? 'Manual Configuration Key (if unable to scan):'
+                              : 'Clé de configuration manuelle (si vous ne pouvez pas scanner) :'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <code className="px-3 py-2 rounded-xl bg-white dark:bg-[#101E1A] border border-border-subtle dark:border-[#233831] font-mono text-xs text-forest dark:text-gold font-bold select-all flex-1 break-all">
+                              {enrollmentData.secret}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySecret(enrollmentData.secret)}
+                              className="p-2 rounded-xl border border-border-subtle dark:border-[#233831] hover:bg-white dark:hover:bg-[#101E1A] text-forest dark:text-gold transition-colors shrink-0"
+                              title={isEn ? "Copy secret key" : "Copier la clé secrète"}
+                            >
+                              {isCopiedSecret ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleConfirmMfaEnrollment} className="space-y-3">
+                      <h4 className="font-bold text-xs sm:text-sm text-forest dark:text-[#F0F4F2]">
+                        {isEn
+                          ? '2. Enter the 6-digit code to complete activation'
+                          : '2. Saisissez le code à 6 chiffres pour valider l’activation'}
+                      </h4>
+                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <div className="relative flex-1 w-full">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-ink-secondary dark:text-[#97A7A0]">
+                            <KeyRound className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={totpVerifyCode}
+                            onChange={(e) => setTotpVerifyCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="123456"
+                            className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-border-subtle dark:border-[#233831] bg-white dark:bg-[#101E1A] text-forest dark:text-[#F0F4F2] font-mono font-bold tracking-widest text-center text-base focus:ring-2 focus:ring-brand-orange"
+                            required
+                            autoFocus
+                          />
+                        </div>
+
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="md"
+                          isLoading={isVerifyingEnrollment}
+                          disabled={totpVerifyCode.trim().length !== 6}
+                          className="w-full sm:w-auto font-bold"
+                        >
+                          {isEn ? 'Verify & Activate' : 'Vérifier et activer'}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="md"
+                          onClick={() => {
+                            setIsEnrollingMfa(false);
+                            setEnrollmentData(null);
+                            setTotpVerifyCode('');
+                            setMfaError(null);
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          {isEn ? 'Cancel' : 'Annuler'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
               </Card>
             </div>
           </div>
