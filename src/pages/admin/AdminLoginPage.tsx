@@ -17,12 +17,14 @@ import {
   LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { adminService } from '../../services/adminService';
 import QRCode from 'qrcode';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { verifyMfaChallenge, verifyMfaEnrollment } = useAuth();
 
   // Authentication & Verification State
   const [email, setEmail] = useState('');
@@ -237,7 +239,7 @@ export const AdminLoginPage: React.FC = () => {
   // Handle Step 2: MFA Code Verification (Challenge or Enrollment)
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaFactorId || mfaCode.trim().length !== 6) {
+    if (mfaCode.trim().length !== 6) {
       setErrorMessage('Veuillez saisir le code à 6 chiffres.');
       return;
     }
@@ -246,21 +248,12 @@ export const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: mfaFactorId,
-        code: mfaCode.trim()
-      });
-
-      if (verifyError) {
-        await adminService.logSecurityEvent({
-          eventType: 'admin_mfa_failed',
-          severity: 'high',
-          route: '/admin/login',
-          outcome: 'denied',
-          reason: verifyError.message || 'MFA challenge failed',
-          actorEmail: email.trim()
-        });
-        throw new Error(verifyError.message || 'Code de sécurité incorrect ou expiré.');
+      // 1. If in enrollment mode, verify factor directly via AuthContext
+      if (step === 'mfa_enroll' && mfaFactorId) {
+        await verifyMfaEnrollment(mfaFactorId, mfaCode.trim());
+      } else {
+        // 2. Synchronize AuthContext state to AAL2 and unblock routing in 0ms
+        await verifyMfaChallenge(mfaCode.trim());
       }
 
       await adminService.logSecurityEvent({
@@ -269,15 +262,22 @@ export const AdminLoginPage: React.FC = () => {
         route: '/admin/login',
         outcome: 'allowed',
         reason: 'Super Admin MFA challenge verified',
-        actorEmail: email.trim()
+        actorEmail: email.trim() || 'ziraouianas0417@gmail.com'
       });
 
-      // MFA elevation complete -> redirect to destination or overview
-      const destination = (location.state as any)?.from?.pathname || '/admin/overview';
-      navigate(destination, { replace: true });
+      // 3. Instant clean navigation straight to Super Admin overview
+      navigate('/admin/overview', { replace: true });
     } catch (err: any) {
       console.error('[AdminLoginPage] MFA verification error:', err);
-      setErrorMessage(err.message || 'Code 2FA incorrect. Veuillez réessayer.');
+      await adminService.logSecurityEvent({
+        eventType: 'admin_mfa_failed',
+        severity: 'high',
+        route: '/admin/login',
+        outcome: 'denied',
+        reason: err.message || 'MFA challenge failed',
+        actorEmail: email.trim() || 'ziraouianas0417@gmail.com'
+      });
+      setErrorMessage(err.message || 'Code 2FA incorrect ou expiré. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }

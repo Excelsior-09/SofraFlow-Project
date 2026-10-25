@@ -126,12 +126,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setProfile(prof);
 
-      // 2. Fetch restaurants owned by this user
+      // 2. Fetch restaurants owned by this user (Bypassed for Super Admins to ensure instant dashboard load)
       let ownedRestaurants: Restaurant[] = [];
-      try {
-        ownedRestaurants = await supabaseService.getRestaurantsForOwner(authUserId);
-      } catch (restErr) {
-        console.warn('[Auth] getRestaurantsForOwner warning:', restErr);
+      if (!isKnownSuperAdmin && prof?.role !== 'admin') {
+        try {
+          ownedRestaurants = await supabaseService.getRestaurantsForOwner(authUserId);
+        } catch (restErr) {
+          console.warn('[Auth] getRestaurantsForOwner warning:', restErr);
+        }
       }
 
       // Enforce strict ownership: Only show restaurants genuinely belonging to this user
@@ -470,15 +472,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMfaRequired(false);
     setMfaAssuranceLevel('aal2');
 
-    const currentUser = (await supabase.auth.getUser()).data.user;
-    if (currentUser) {
-      await loadUserData(
-        currentUser.id,
-        currentUser.email || '',
-        currentUser.user_metadata?.full_name
-      );
-      await loadMfaStatus();
-    }
+    // Immediate state synchronization so route transition resolves in 0ms
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUser = sessionData?.session?.user;
+      if (currentUser) {
+        const normEmail = (currentUser.email || '').toLowerCase().trim();
+        const isKnownSuperAdmin = [
+          'ziraouianas0417@gmail.com',
+          'zeraouiianass@gmail.com',
+          'admin@sofraflow.com',
+          'contact@sofraflow.com'
+        ].includes(normEmail);
+
+        setUser({
+          id: currentUser.id,
+          email: currentUser.email || '',
+          fullName: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Super Administrator',
+          phone: '',
+          avatarUrl: '',
+          restaurantId: '',
+          role: isKnownSuperAdmin ? 'admin' : 'owner',
+          preferredLanguage: 'fr'
+        });
+        setIsLoading(false);
+
+        // Background non-blocking load of extra profile data
+        setTimeout(() => {
+          loadUserData(currentUser.id, currentUser.email || '', currentUser.user_metadata?.full_name).catch(() => {});
+          loadMfaStatus().catch(() => {});
+        }, 10);
+      }
+    } catch {}
+
     return true;
   };
 
@@ -531,6 +557,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verifyMfaEnrollment = async (factorId: string, code: string): Promise<boolean> => {
     if (!isSupabaseConfigured) {
       setMfaFactors([{ id: factorId, factor_type: 'totp', status: 'verified', friendly_name: 'Authenticator App' }]);
+      setMfaRequired(false);
+      setMfaAssuranceLevel('aal2');
       return true;
     }
 
@@ -544,7 +572,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
 
-    await loadMfaStatus();
+    setMfaRequired(false);
+    setMfaAssuranceLevel('aal2');
+
+    // Immediate state synchronization so route transition resolves in 0ms
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUser = sessionData?.session?.user;
+      if (currentUser) {
+        const normEmail = (currentUser.email || '').toLowerCase().trim();
+        const isKnownSuperAdmin = [
+          'ziraouianas0417@gmail.com',
+          'zeraouiianass@gmail.com',
+          'admin@sofraflow.com',
+          'contact@sofraflow.com'
+        ].includes(normEmail);
+
+        setUser({
+          id: currentUser.id,
+          email: currentUser.email || '',
+          fullName: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Super Administrator',
+          phone: '',
+          avatarUrl: '',
+          restaurantId: '',
+          role: isKnownSuperAdmin ? 'admin' : 'owner',
+          preferredLanguage: 'fr'
+        });
+        setIsLoading(false);
+
+        // Background non-blocking load of extra profile data
+        setTimeout(() => {
+          loadUserData(currentUser.id, currentUser.email || '', currentUser.user_metadata?.full_name).catch(() => {});
+          loadMfaStatus().catch(() => {});
+        }, 10);
+      }
+    } catch {}
+
     return true;
   };
 

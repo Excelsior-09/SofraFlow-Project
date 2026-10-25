@@ -36,6 +36,9 @@ const rateLimitTracker = new Map<string, number[]>();
 let cachedAdminCheck: { userId: string; isAdmin: boolean; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60000; // 60 seconds
 
+let cachedAnalytics: { data: PlatformExecutiveAnalytics; timestamp: number } | null = null;
+const ANALYTICS_CACHE_TTL_MS = 30000;
+
 /**
  * Super Admin Management Service
  * Strictly authorized platform-level operations for the SOFRAFLOW SaaS Owner.
@@ -150,12 +153,15 @@ export const adminService = {
    */
   async getPlatformAnalytics(): Promise<PlatformExecutiveAnalytics | null> {
     if (!isSupabaseConfigured) return null;
+    if (cachedAnalytics && Date.now() - cachedAnalytics.timestamp < ANALYTICS_CACHE_TTL_MS) {
+      return cachedAnalytics.data;
+    }
     try {
       // 1. Try server RPC aggregator
       try {
         const { data, error } = await supabase.rpc('get_platform_executive_analytics');
         if (!error && data) {
-          return {
+          const result: PlatformExecutiveAnalytics = {
             totalUsers: Number(data.total_users || 0),
             newUsers30d: Number(data.new_users_30d || 0),
             totalRestaurants: Number(data.total_restaurants || 0),
@@ -174,6 +180,8 @@ export const adminService = {
             totalOrdersVolumeMad: Number(data.total_orders_volume_mad || 0),
             generatedAt: data.generated_at || new Date().toISOString()
           };
+          cachedAnalytics = { data: result, timestamp: Date.now() };
+          return result;
         }
       } catch {}
 

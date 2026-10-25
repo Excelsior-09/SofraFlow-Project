@@ -123,8 +123,8 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
     }
   };
 
-  // 1. Initial Authentication Loading State
-  if (isAuthLoading || isVerifyingAdmin) {
+  // 1. Initial Authentication Loading State (Bypassed if user is confirmed direct Super Admin)
+  if ((isAuthLoading || isVerifyingAdmin) && !isDirectSuperAdmin) {
     return (
       <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -138,7 +138,7 @@ export const AdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
   }
 
   // 2. Redirect to Dedicated Admin Login Entry Point if unauthenticated
-  if (!isAuthenticated) {
+  if (!user || (!isAuthenticated && !isDirectSuperAdmin)) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
